@@ -7,7 +7,8 @@ defmodule Resolver.MixProject do
       version: "0.1.0",
       elixir: "~> 1.13-dev",
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: aliases()
     ]
   end
 
@@ -21,8 +22,48 @@ defmodule Resolver.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"}
+      {:hex_core, "~> 0.8.2", only: :dev},
+      {:stream_data, "~> 0.5.0", only: :test}
     ]
+  end
+
+  defp aliases() do
+    [
+      "resolver.registry": &resolver_registry/1,
+      test: &test/1
+    ]
+  end
+
+  defp resolver_registry(_args) do
+    Mix.Task.run("deps.get")
+    Mix.Task.run("deps.compile")
+    File.mkdir_p!("priv")
+
+    {:ok, {200, _, names}} = :hex_repo.get_names(hex_config())
+
+    result =
+      Task.async_stream(
+        names,
+        fn %{name: package} ->
+          {:ok, {200, _, registry}} = :hex_repo.get_package(hex_config(), package)
+          {package, registry}
+        end,
+        ordered: false
+      )
+      |> Map.new(fn {:ok, package} -> package end)
+
+    File.write!("priv/registry.term", :zlib.gzip(:erlang.term_to_binary(result)))
+  end
+
+  defp hex_config() do
+    %{:hex_core.default_config() | http_adapter: {:hex_http_httpc, %{http_options: [ssl: []]}}}
+  end
+
+  defp test(args) do
+    unless File.exists?("priv/registry.term") do
+      Mix.Task.run("resolver.registry")
+    end
+
+    Mix.Task.run("test", args)
   end
 end
