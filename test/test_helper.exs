@@ -49,6 +49,10 @@ defmodule Resolver.Case do
     :persistent_term.put({:resolver_test, :versions}, versions)
     :persistent_term.put({:resolver_test, :requirements}, requirements)
   end
+
+  def v(major, minor, patch, pre) do
+    %Version{major: major, minor: minor, patch: patch, pre: pre, build: nil}
+  end
 end
 
 Resolver.Case.init_registry()

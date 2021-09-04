@@ -1,5 +1,5 @@
 defmodule Resolver.PartialSolution do
-  alias Resolver.{Assignment, PackageRange, Term}
+  alias Resolver.{Assignment, Term}
 
   defstruct assignments: [],
             decisions: %{},
@@ -22,25 +22,26 @@ defmodule Resolver.PartialSolution do
   def derive(%__MODULE__{} = solution, package_range, positive, incompatibility) do
     solution
     |> assign(package_range, positive, incompatibility)
-    |> register(package_range, )
+    |> register(package_range)
   end
 
   defp assign(solution, package_range, positive, incompatibility) do
-    term = %Term{positive: positive, range: package_range}
+    term = %Term{positive: positive, package_range: package_range}
 
     assignment = %Assignment{
       term: term,
-      decision_level: Map.size(state.decisions),
-      index: length(assignments),
+      decision_level: map_size(solution.decisions),
+      index: length(solution.assignments),
       cause: incompatibility
     }
 
-    %{solution | assignments: [assignment | state.assignments]}
+    %{solution | assignments: [assignment | solution.assignments]}
   end
 
-  defp register() do
+  defp register(solution, package_range) do
     case Map.fetch(solution.positive, package_range.name) do
-      {:ok, positive}
+      {:ok, _positive} -> :TODO
+      :error -> :TODO
     end
   end
 end

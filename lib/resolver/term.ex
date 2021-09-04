@@ -1,47 +1,48 @@
 defmodule Resolver.Term do
-  alias Resolver.Requirement.Union
+  alias Resolver.{Constraint, PackageRange, Term}
+  alias Resolver.Constraint.Empty
 
   defstruct positive: true,
-            range: nil
+            package_range: nil
 
-  def relation(left, right) do
-    left_union = left.range.union
-    right_union = right.range.union
+  def relation(%Term{} = left, %Term{} = right) do
+    left_constraint = constraint(left)
+    right_constraint = constraint(right)
 
     cond do
       right.positive and left.positive ->
         cond do
           not compatible_package?(left, right) -> :disjoint
-          Union.allows_all?(right_union, left_union) -> :subset
-          not Union.allows_any?(left_union, right_union) -> :disjoint
+          Constraint.allows_all?(right_constraint, left_constraint) -> :subset
+          not Constraint.allows_any?(left_constraint, right_constraint) -> :disjoint
           true -> :overlapping
         end
 
       right.positive ->
         cond do
           not compatible_package?(left, right) -> :overlapping
-          Union.allows_all?(left_union, right_union) -> :disjoint
+          Constraint.allows_all?(left_constraint, right_constraint) -> :disjoint
           true -> :overlapping
         end
 
       left.positive ->
         cond do
           not compatible_package?(left, right) -> :subset
-          not Union.allows_any?(right_union, left_union) -> :subset
-          Union.allows_all?(left_union, right_union) -> :disjoint
+          not Constraint.allows_any?(right_constraint, left_constraint) -> :subset
+          Constraint.allows_all?(left_constraint, right_constraint) -> :disjoint
           true -> :overlapping
         end
 
       true ->
         cond do
           not compatible_package?(left, right) -> :overlapping
-          Union.allows_all?(left_union, right_union) -> :subset
+          Constraint.allows_all?(left_constraint, right_constraint) -> :subset
           true -> :overlapping
         end
     end
   end
 
-  def intersect(left, right) do
+  def intersect(%Term{} = left, %Term{} = right) do
     cond do
       compatible_package?(left, right) ->
         cond do
@@ -49,18 +50,42 @@ defmodule Resolver.Term do
             positive = if left.positive, do: left, else: right
             negative = if left.positive, do: right, else: left
 
+            constraint = Constraint.difference(constraint(positive), constraint(negative))
+            non_empty_term(left, constraint, true)
+
           left.positive ->
+            constraint = Constraint.intersect(constraint(left), constraint(right))
+            non_empty_term(left, constraint, true)
+
           true ->
+            constraint = Constraint.union(constraint(left), constraint(right))
+            non_empty_term(left, constraint, true)
         end
 
       left.positive != right.positive ->
+        :TODO
 
       true ->
-        is_nil
+        :TODO
     end
   end
 
   defp compatible_package?(left, right) do
-    left.range.name == right.range.name
+    left.package_range.name == right.package_range.name
+  end
+
+  defp constraint(%Term{package_range: %PackageRange{constraint: constraint}}) do
+    constraint
+  end
+
+  defp non_empty_term(_term, %Empty{}, _positive) do
+    nil
+  end
+
+  defp non_empty_term(term, constraint, positive) do
+    %Term{
+      package_range: %{term.package_range | constraint: constraint},
+      positive: positive
+    }
   end
 end

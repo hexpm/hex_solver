@@ -8,7 +8,7 @@ defmodule Resolver.Incompatibility do
   end
 
   def has_package?(
-        %__MODULE__{terms: [%Term{range: %PackageRange{name: package}} | _terms]},
+        %__MODULE__{terms: [%Term{package_range: %PackageRange{name: package}} | _terms]},
         package
       ) do
     true

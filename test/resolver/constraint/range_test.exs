@@ -1,28 +1,27 @@
-defmodule Resolver.Requirement.RangeTest do
+defmodule Resolver.Constraint.RangeTest do
   use Resolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Version
-  alias Resolver.Requirement.Range
+  alias Resolver.Constraint.{Range, Version}
 
   describe "valid?/1" do
     test "samples" do
-      assert Range.valid?(%Range{min: {1, 0, 0, []}, max: {2, 0, 0, []}})
+      assert Range.valid?(%Range{min: v(1, 0, 0, []), max: v(2, 0, 0, [])})
 
       assert Range.valid?(%Range{
-               min: {1, 0, 0, []},
-               max: {1, 0, 0, []},
+               min: v(1, 0, 0, []),
+               max: v(1, 0, 0, []),
                include_min: true,
                include_max: true
              })
 
-      refute Range.valid?(%Range{min: {2, 0, 0, []}, max: {1, 0, 0, []}})
-      refute Range.valid?(%Range{min: {1, 0, 0, []}, max: {1, 0, 0, []}})
+      refute Range.valid?(%Range{min: v(2, 0, 0, []), max: v(1, 0, 0, [])})
+      refute Range.valid?(%Range{min: v(1, 0, 0, []), max: v(1, 0, 0, [])})
     end
 
     test "samples with nil" do
-      assert Range.valid?(%Range{min: nil, max: {2, 0, 0, []}})
-      assert Range.valid?(%Range{min: {1, 0, 0, []}, max: nil})
+      assert Range.valid?(%Range{min: nil, max: v(2, 0, 0, [])})
+      assert Range.valid?(%Range{min: v(1, 0, 0, []), max: nil})
     end
 
     property "with different versions" do
@@ -55,55 +54,55 @@ defmodule Resolver.Requirement.RangeTest do
   describe "overlapping?/2" do
     test "samples" do
       assert Range.overlapping?(
-               %Range{min: {1, 0, 0, []}, max: {3, 0, 0, []}},
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}}
+               %Range{min: v(1, 0, 0, []), max: v(3, 0, 0, [])},
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: {1, 0, 0, []}, max: {2, 0, 0, []}, include_max: true},
-               %Range{min: {2, 0, 0, []}, max: {3, 0, 0, []}}
+               %Range{min: v(1, 0, 0, []), max: v(2, 0, 0, []), include_max: true},
+               %Range{min: v(2, 0, 0, []), max: v(3, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: {1, 0, 0, []}, max: {2, 0, 0, []}},
-               %Range{min: {2, 0, 0, []}, max: {3, 0, 0, []}, include_min: true}
+               %Range{min: v(1, 0, 0, []), max: v(2, 0, 0, [])},
+               %Range{min: v(2, 0, 0, []), max: v(3, 0, 0, []), include_min: true}
              )
 
       refute Range.overlapping?(
-               %Range{min: {1, 0, 0, []}, max: {2, 0, 0, []}},
-               %Range{min: {2, 0, 0, []}, max: {3, 0, 0, []}}
+               %Range{min: v(1, 0, 0, []), max: v(2, 0, 0, [])},
+               %Range{min: v(2, 0, 0, []), max: v(3, 0, 0, [])}
              )
     end
 
     test "samples with nil" do
       assert Range.overlapping?(
                %Range{min: nil, max: nil},
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}}
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: nil, max: {3, 0, 0, []}},
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}}
+               %Range{min: nil, max: v(3, 0, 0, [])},
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: {1, 0, 0, []}, max: nil},
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}}
+               %Range{min: v(1, 0, 0, []), max: nil},
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}},
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])},
                %Range{min: nil, max: nil}
              )
 
       assert Range.overlapping?(
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}},
-               %Range{min: nil, max: {3, 0, 0, []}}
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])},
+               %Range{min: nil, max: v(3, 0, 0, [])}
              )
 
       assert Range.overlapping?(
-               %Range{min: {2, 0, 0, []}, max: {4, 0, 0, []}},
-               %Range{min: {1, 0, 0, []}, max: nil}
+               %Range{min: v(2, 0, 0, []), max: v(4, 0, 0, [])},
+               %Range{min: v(1, 0, 0, []), max: nil}
              )
     end
 

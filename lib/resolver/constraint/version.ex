@@ -1,4 +1,4 @@
-defmodule Resolver.Version do
+defmodule Resolver.Constraint.Version do
   import Kernel, except: [match?: 2]
 
   def parse!(string) do
@@ -6,15 +6,15 @@ defmodule Resolver.Version do
   end
 
   def to_string(version) do
-    String.Chars.to_string(to_version(version))
+    String.Chars.to_string(version)
   end
 
   def compare(left, right) do
-    Version.compare(to_version(left), to_version(right))
+    Version.compare(left, right)
   end
 
   def match?(version, requirement) do
-    Version.match?(to_version(version), requirement)
+    Version.match?(version, requirement)
   end
 
   def min(left, right) do
@@ -32,9 +32,4 @@ defmodule Resolver.Version do
       :gt -> left
     end
   end
-
-  defp to_version(%Version{} = version), do: version
-
-  defp to_version({major, minor, patch, pre}),
-    do: %Version{major: major, minor: minor, patch: patch, pre: pre}
 end
