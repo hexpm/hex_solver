@@ -1,4 +1,4 @@
-defmodule Resolver.Constraint.Impl do
+defmodule Resolver.Constraints.Impl do
   defmacro __using__(_opts) do
     quote do
       defimpl Resolver.Constraint do

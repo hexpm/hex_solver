@@ -1,6 +1,6 @@
-defmodule Resolver.Constraint.Util do
+defmodule Resolver.Constraints.Util do
   alias Resolver.Constraint
-  alias Resolver.Constraint.{Empty, Range, Union}
+  alias Resolver.Constraints.{Empty, Range, Union}
 
   def from_list([]), do: %Empty{}
   def from_list([single]), do: single
@@ -44,5 +44,12 @@ defmodule Resolver.Constraint.Util do
       %Empty{} -> []
       other -> other
     end)
+  end
+
+  def from_bounds(%Version{} = lower, %Version{} = upper) do
+    case Version.compare(lower, upper) do
+      :eq -> lower
+      :lt -> %Range{min: lower, max: upper, include_min: true, include_max: true}
+    end
   end
 end

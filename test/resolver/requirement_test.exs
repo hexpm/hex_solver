@@ -3,13 +3,13 @@ defmodule Resolver.RequirementTest do
   use ExUnitProperties
 
   alias Resolver.Requirement
-  alias Resolver.Constraint.{Range, Union}
+  alias Resolver.Constraints.{Range, Union}
 
   describe "parse!/" do
     property "always parses" do
       check all(requirement <- requirements()) do
         constraint = Requirement.parse!(requirement.source)
-        assert constraint.__struct__ in [Range, Union, Elixir.Version]
+        assert constraint.__struct__ in [Range, Union, Version]
       end
     end
   end

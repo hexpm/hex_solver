@@ -1,6 +1,6 @@
-defmodule Resolver.Constraint.Union do
+defmodule Resolver.Constraints.Union do
   alias Resolver.Constraint
-  alias Resolver.Constraint.{Empty, Range, Union, Util}
+  alias Resolver.Constraints.{Empty, Range, Union, Util}
 
   # List of ranges or versions
   defstruct ranges: []

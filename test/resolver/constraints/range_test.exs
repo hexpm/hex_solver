@@ -1,8 +1,8 @@
-defmodule Resolver.Constraint.RangeTest do
+defmodule Resolver.Constraints.RangeTest do
   use Resolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Constraint.{Range, Version}
+  alias Resolver.Constraints.{Range, Version}
 
   describe "valid?/1" do
     test "samples" do

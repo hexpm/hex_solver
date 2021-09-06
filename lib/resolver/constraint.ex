@@ -1,5 +1,7 @@
 defprotocol Resolver.Constraint do
   def any?(constraint)
+  def empty?(constraint)
+  def allows?(constraint, version)
   def adjacent?(left, right)
   def allows_any?(left, right)
   def allows_all?(left, right)

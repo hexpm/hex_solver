@@ -1,5 +1,5 @@
-defmodule Resolver.Constraint.Range do
-  alias Resolver.Constraint.{Empty, Range, Union, Version}
+defmodule Resolver.Constraints.Range do
+  alias Resolver.Constraints.{Empty, Range, Union, Version}
 
   defstruct min: nil,
             max: nil,

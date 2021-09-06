@@ -1,6 +1,6 @@
 defmodule Resolver.Term do
   alias Resolver.{Constraint, PackageRange, Term}
-  alias Resolver.Constraint.Empty
+  alias Resolver.Constraints.Empty
 
   defstruct positive: true,
             package_range: nil
@@ -63,10 +63,10 @@ defmodule Resolver.Term do
         end
 
       left.positive != right.positive ->
-        :TODO
+        if left.positive, do: left, else: right
 
       true ->
-        :TODO
+        nil
     end
   end
 

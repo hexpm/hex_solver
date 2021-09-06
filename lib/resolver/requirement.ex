@@ -1,5 +1,5 @@
 defmodule Resolver.Requirement do
-  alias Resolver.Constraint.{Range, Util, Version}
+  alias Resolver.Constraints.{Range, Util, Version}
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
 
@@ -19,7 +19,7 @@ defmodule Resolver.Requirement do
   end
 
   defp delex([], acc) do
-    # TODO: Constraint.compare_min?
+    # TODO: Constraint.compare
     acc
     |> Enum.sort_by(
       fn
