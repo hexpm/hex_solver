@@ -78,6 +78,17 @@ defmodule Resolver.Constraints.Range do
     end
   end
 
+  def allows?(%Range{} = range, %Elixir.Version{} = version) do
+    compare_min = Version.compare(version, range.min)
+
+    if compare_min == :gt or (compare_min == :eq and range.include_min) do
+      compare_max = Version.compare(version, range.max)
+      compare_max == :lt or (compare_max == :eq and range.include_max)
+    else
+      false
+    end
+  end
+
   def strictly_lower?(%Range{} = left, %Range{} = right) do
     if is_nil(left.max) or is_nil(right.min) do
       false
@@ -188,4 +199,17 @@ defmodule Resolver.Constraints.Range do
   defp version_compare(nil, _right), do: :lt
   defp version_compare(_left, nil), do: :lt
   defp version_compare(left, right), do: Version.compare(left, right)
+
+  defimpl Resolver.Constraint do
+    alias Resolver.Constraints.Range, as: R
+
+    defdelegate allows?(constraint, version), to: R
+    defdelegate allows_any?(left, right), to: R
+    defdelegate allows_all?(left, right), to: R
+    defdelegate allows_higher?(left, right), to: R
+    defdelegate strictly_lower?(left, right), to: R
+    defdelegate strictly_higher?(left, right), to: R
+    defdelegate difference(left, right), to: R
+    defdelegate intersect(left, right), to: R
+  end
 end

@@ -2,8 +2,8 @@ defmodule Resolver do
   alias Resolver.{Constraint, Incompatibility, PackageRange, PartialSolution, Term}
   alias Resolver.Constraints.{Util, Version}
 
-  def run() do
-    solve("$root", new_state())
+  def run(registry) do
+    solve("$root", new_state(registry))
   end
 
   defp solve(next, state) do
@@ -23,22 +23,22 @@ defmodule Resolver do
     incompatibilities = Enum.reverse(Map.fetch!(state.incompatibilities, package))
 
     {changed, state} =
-      Enum.reduce_while(incompatibilities, {changed, state}, fn incompatibility,
-                                                                {changed, state} ->
-        case propagate_incompatability(incompatibility.terms, nil, incompatibility, state) do
-          {:ok, result, state} ->
-            {:cont, {changed ++ [result], state}}
+      Enum.reduce_while(incompatibilities, {changed, state}, fn
+        incompatibility, {changed, state} ->
+          case propagate_incompatability(incompatibility.terms, nil, incompatibility, state) do
+            {:ok, result, state} ->
+              {:cont, {changed ++ [result], state}}
 
-          {:error, :conflict} ->
-            :TODO
+            {:error, :conflict} ->
+              raise "TODO"
 
-          # root_cause = resolve_conflict(incompatibility)
-          # {:ok, result, state} = propagate_incompatability(root_cause.terms, nil, root_cause, state)
-          # {:halt, {[result], state}}
+            # root_cause = resolve_conflict(incompatibility)
+            # {:ok, result, state} = propagate_incompatability(root_cause.terms, nil, root_cause, state)
+            # {:halt, {[result], state}}
 
-          {:error, :none} ->
-            {:cont, {changed, state}}
-        end
+            {:error, :none} ->
+              {:cont, {changed, state}}
+          end
       end)
 
     unit_propagation(changed, state)
@@ -122,11 +122,7 @@ defmodule Resolver do
             # a conflict. We'll continue adding its dependencies then go back to unit propagation
             # that will eventually choose a better version.
             conflict =
-              conflict or
-                Enum.all?(incompatibilities.terms, fn term ->
-                  term.package_range.name == package_range.name or
-                    PartialSolution.satisfies?(state.solution, term)
-                end)
+              conflict or incompatibility_conflict?(state, incompatibility, package_range.name)
 
             state = add_incompatibility(state, incompatibility)
             {state, conflict}
@@ -157,6 +153,12 @@ defmodule Resolver do
       end)
 
     %{state | incompatibilities: incompatibilities}
+  end
+
+  defp incompatibility_conflict?(state, incompatibility, name) do
+    Enum.all?(incompatibility.terms, fn term ->
+      term.package_range.name == name or PartialSolution.satisfies?(state.solution, term)
+    end)
   end
 
   # NOTE: Much of this can be cached
@@ -201,7 +203,7 @@ defmodule Resolver do
     last
   end
 
-  defp new_state() do
+  defp new_state(registry) do
     version = Version.parse!("1.0.0")
     package_range = %PackageRange{name: "$root", constraint: version}
     root = %Incompatibility{terms: [%Term{positive: false, package_range: package_range}]}
@@ -209,7 +211,7 @@ defmodule Resolver do
     %{
       solution: %PartialSolution{},
       incompatibilities: %{},
-      registry: Resolver.Registry.Static
+      registry: registry
     }
     |> add_incompatibility(root)
   end
