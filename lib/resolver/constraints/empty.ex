@@ -21,4 +21,14 @@ defmodule Resolver.Constraints.Empty do
   def intersect(%Empty{}, _constraint), do: %Empty{}
 
   def union(%Empty{}, constraint), do: constraint
+
+  def compare(left, right) do
+    raise FunctionClauseError,
+      module: __MODULE__,
+      function: :compare,
+      arity: 2,
+      kind: :def,
+      args: [left, right],
+      clauses: []
+  end
 end

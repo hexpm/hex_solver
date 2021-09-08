@@ -1,8 +1,11 @@
 defmodule Resolver.Constraints.Range do
   use Resolver.Constraints.Impl
 
-  alias Resolver.Constraints.{Empty, Range, Union, Version}
+  alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
 
+  # NOTE: %Range{min: nil, max: nil} allows any version.
+  # NOTE: %Range{min: min, max: max, include_min: true, include_max: true}
+  #       when min == max is a single version.
   defstruct min: nil,
             max: nil,
             include_min: false,
@@ -58,8 +61,15 @@ defmodule Resolver.Constraints.Range do
     not allows_lower?(right, left) and not allows_higher?(right, left)
   end
 
+  def allows_any?(%Range{}, %Empty{}), do: true
+  def allows_any?(%Range{} = range, %Elixir.Version{} = version), do: allows?(range, version)
+
   def allows_any?(%Range{} = left, %Range{} = right) do
     not strictly_lower?(right, left) and not strictly_higher?(right, left)
+  end
+
+  def allows_any?(%Range{} = range, %Union{ranges: ranges}) do
+    Enum.any?(ranges, &allows_any?(range, &1))
   end
 
   def allows_lower?(%Range{} = left, %Range{} = right) do
@@ -201,6 +211,90 @@ defmodule Resolver.Constraints.Range do
           }
       end
     end
+  end
+
+  def union(%Range{} = range, %Elixir.Version{} = version) do
+    if allows?(range, version) do
+      range
+    else
+      case range do
+        %Range{min: ^version} -> %{range | include_min: true}
+        %Range{max: ^version} -> %{range | include_max: true}
+        _ -> Util.union([range, version])
+      end
+    end
+  end
+
+  def union(%Range{} = left, %Range{} = right) do
+    if not edges_touch?(left, right) and not Range.allows_any?(left, right) do
+      Util.union([left, right])
+    else
+      min = if allows_lower?(left, right), do: left, else: right
+      max = if allows_higher?(left, right), do: left, else: right
+
+      %Range{
+        min: min.min,
+        max: max.max,
+        include_min: min.include_min,
+        include_max: max.include_max
+      }
+    end
+  end
+
+  def union(%Range{} = left, right) do
+    Util.union([left, right])
+  end
+
+  defp edges_touch?(left, right) do
+    (left.max != nil and left.max == right.min and (left.include_max or right.include_min)) or
+      (left.min != nil and left.min == right.max and (left.include_min or right.include_max))
+  end
+
+  def compare(%Range{min: min, include_min: include_min}, %Elixir.Version{} = version) do
+    if is_nil(min) do
+      :lt
+    else
+      case Version.compare(min, version) do
+        :eq when include_min -> :eq
+        :eq -> :gt
+        :lt -> :lt
+        :gt -> :gt
+      end
+    end
+  end
+
+  def compare(%Range{} = left, %Range{} = right) do
+    cond do
+      is_nil(left.min) and is_nil(right.min) ->
+        :eq
+
+      is_nil(left.min) ->
+        :lt
+
+      is_nil(right.min) ->
+        :gt
+
+      true ->
+        case Version.compare(left.min, right.min) do
+          :eq when left.include_min == right.include -> :eq
+          :eq when left.include_min -> :lt
+          :eq when right.include_min -> :gt
+          :lt -> :lt
+          :gt -> :gt
+        end
+    end
+  end
+
+  def compare(%Range{} = left, %Union{ranges: [right | _]}) do
+    compare(left, right)
+  end
+
+  def single_version?(%Range{min: min, max: max, include_min: true, include_max: true}) do
+    min == max
+  end
+
+  def single_version?(%Range{}) do
+    false
   end
 
   defp version_compare(nil, _right), do: :lt

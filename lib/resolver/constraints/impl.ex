@@ -1,6 +1,7 @@
 defmodule Resolver.Constraints.Impl do
   defmacro __using__(opts) do
     for = Keyword.get(opts, :for, __CALLER__.module)
+
     quote do
       defimpl Resolver.Constraint, for: unquote(for) do
         def any?(constraint),
@@ -26,6 +27,9 @@ defmodule Resolver.Constraints.Impl do
 
         def union(left, right),
           do: unquote(__CALLER__.module).union(left, right)
+
+        def compare(left, right),
+          do: unquote(__CALLER__.module).compare(left, right)
       end
     end
   end

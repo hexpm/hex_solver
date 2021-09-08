@@ -6,7 +6,7 @@ defmodule Resolver.Constraints.Util do
   def from_list([single]), do: single
   def from_list(acc), do: %Union{ranges: acc}
 
-  def union_of(list) do
+  def union(list) do
     list = flatten(list)
 
     cond do
@@ -42,7 +42,7 @@ defmodule Resolver.Constraints.Util do
     Enum.flat_map(list, fn
       %Union{ranges: ranges} -> ranges
       %Empty{} -> []
-      other -> other
+      other -> [other]
     end)
   end
 
@@ -51,11 +51,11 @@ defmodule Resolver.Constraints.Util do
 
   Assumes `left` is lower than `right`.
   """
-  def adjacent?(%Range{} = left, %Range{} = right) do
+  def adjacent?(left, right) do
     left = Version.to_range(left)
     right = Version.to_range(right)
 
-    left.max != right.min and
+    left.max == right.min and
       ((left.include_max and not right.include_min) or
          (not left.include_max and right.include_min))
   end

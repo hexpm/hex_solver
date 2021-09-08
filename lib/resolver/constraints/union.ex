@@ -4,8 +4,17 @@ defmodule Resolver.Constraints.Union do
   alias Resolver.Constraint
   alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
 
-  # List of ranges or versions
+  # We will always work under the following assumptions for unions:
+  # * Minimum of two elements
+  # * Only %Range{} and %Version{}, no %Empty{}
+  # * No "any range" (%Range{min: nil, max: nil}
+  # * Elements sorted by their minimum version
+
   defstruct ranges: []
+
+  def empty?(%Union{}), do: false
+
+  def any?(%Union{}), do: false
 
   def allows?(%Union{ranges: ranges}, %Elixir.Version{} = version) do
     Enum.any?(ranges, &Constraint.allows?(&1, version))
@@ -29,18 +38,18 @@ defmodule Resolver.Constraints.Union do
   defp do_allows_all?([], _rights), do: false
 
   def allows_any?(%Union{ranges: left}, %Union{ranges: right}) do
-    do_allows_any?(left, right)
+    do_allows_any?(to_ranges(left), to_ranges(right))
   end
 
   # We can recurse left and right together since they are
   # sorted on minimum version
   defp do_allows_any?([left | lefts], [right | rights]) do
     cond do
-      Constraint.allows_any?(left, right) ->
+      Range.allows_any?(left, right) ->
         true
 
       # Move forward with the range with the lower max value
-      Constraint.allows_higher?(right, left) ->
+      Range.allows_higher?(right, left) ->
         do_allows_any?(lefts, [right | rights])
 
       true ->
@@ -98,7 +107,7 @@ defmodule Resolver.Constraints.Union do
   end
 
   def intersect(%Union{ranges: left}, %Union{ranges: right}) do
-    do_intersect(left, right, [])
+    do_intersect(to_ranges(left), to_ranges(right), [])
   end
 
   defp do_intersect([left | lefts], [right | rights], acc) do
@@ -108,7 +117,7 @@ defmodule Resolver.Constraints.Union do
         intersection -> [intersection | acc]
       end
 
-    if Constraint.allows_higher?(right, left) do
+    if Range.allows_higher?(right, left) do
       do_intersect(lefts, [right | rights], acc)
     else
       do_intersect([left | lefts], rights, acc)
@@ -119,7 +128,11 @@ defmodule Resolver.Constraints.Union do
   defp do_intersect([], _rights, acc), do: Util.from_list(acc)
 
   def union(%Union{} = left, %Union{} = right) do
-    Util.union_of([left, right])
+    Util.union([left, right])
+  end
+
+  def compare(%Union{ranges: [range | _]}, right) do
+    Constraint.compare(range, right)
   end
 
   defp to_ranges(ranges) do

@@ -7,4 +7,5 @@ defprotocol Resolver.Constraint do
   def difference(left, right)
   def intersect(left, right)
   def union(left, right)
+  def compare(left, right)
 end

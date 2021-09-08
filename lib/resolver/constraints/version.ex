@@ -4,14 +4,14 @@ defmodule Resolver.Constraints.Version do
   import Kernel, except: [match?: 2]
 
   alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union}
+  alias Resolver.Constraints.{Empty, Range, Union, Util}
 
   def any?(%Version{}), do: false
 
   def empty?(%Version{}), do: false
 
   def allows?(%Version{} = left, %Version{} = right) do
-    compare(left, right) == :eq
+    left == right
   end
 
   def allows_any?(%Version{} = left, right) do
@@ -23,11 +23,24 @@ defmodule Resolver.Constraints.Version do
   end
 
   def allows_all?(%Version{} = left, %Version{} = right) do
-    compare(left, right) == :eq
+    left == right
   end
 
-  def allows_all?(%Version{} = version, %Range{min: min, max: max, include_min: true, include_max: true}) do
-    compare(version, min) == :eq and compare(version, max) == :eq
+  def allows_all?(%Version{}, %Range{min: nil}) do
+    false
+  end
+
+  def allows_all?(%Version{}, %Range{max: nil}) do
+    false
+  end
+
+  def allows_all?(%Version{} = version, %Range{
+        min: min,
+        max: max,
+        include_min: true,
+        include_max: true
+      }) do
+    version == min and version == max
   end
 
   def allows_all?(%Version{}, %Range{}) do
@@ -38,8 +51,45 @@ defmodule Resolver.Constraints.Version do
     Enum.all?(ranges, &allows_all?(version, &1))
   end
 
-  def compare(left, right) do
+  def difference(%Version{} = version, constraint) do
+    if Constraint.allows?(constraint, version), do: %Empty{}, else: version
+  end
+
+  def intersect(%Version{} = version, constraint) do
+    if Constraint.allows?(constraint, version), do: version, else: %Empty{}
+  end
+
+  def union(%Version{} = version, constraint) do
+    if Constraint.allows?(constraint, version) do
+      constraint
+    else
+      case constraint do
+        %Range{min: ^version} = range -> %{range | include_min: true}
+        %Range{max: ^version} = range -> %{range | include_max: true}
+        _ -> Util.union([version, constraint])
+      end
+    end
+  end
+
+  def compare(%Version{} = left, %Version{} = right) do
     Version.compare(left, right)
+  end
+
+  def compare(%Version{} = version, %Range{min: min, include_min: include_min}) do
+    if is_nil(min) do
+      :gt
+    else
+      case Version.compare(version, min) do
+        :eq when include_min -> :eq
+        :eq -> :lt
+        :lt -> :lt
+        :gt -> :gt
+      end
+    end
+  end
+
+  def compare(%Version{} = version, %Union{ranges: [range | _]}) do
+    compare(version, range)
   end
 
   def min(left, right) do
