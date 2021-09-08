@@ -1,6 +1,6 @@
 defmodule Resolver do
   alias Resolver.{Constraint, Incompatibility, PackageRange, PartialSolution, Term}
-  alias Resolver.Constraints.{Util, Version}
+  alias Resolver.Constraints.Util
 
   def run(registry) do
     solve("$root", new_state(registry))

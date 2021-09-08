@@ -1,6 +1,6 @@
 defmodule Resolver.Constraints.Util do
   alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union}
+  alias Resolver.Constraints.{Empty, Range, Union, Version}
 
   def from_list([]), do: %Empty{}
   def from_list([single]), do: single
@@ -25,7 +25,7 @@ defmodule Resolver.Constraints.Util do
               [constraint | acc]
 
             not Constraint.allows_any?(previous, constraint) and
-                not Constraint.adjacent?(previous, constraint) ->
+                not adjacent?(previous, constraint) ->
               [constraint | acc]
 
             true ->
@@ -46,7 +46,21 @@ defmodule Resolver.Constraints.Util do
     end)
   end
 
-  def from_bounds(%Version{} = lower, %Version{} = upper) do
+  @doc """
+  Returns `true` if `left` is immediately next to, but not overlapping, `right`.
+
+  Assumes `left` is lower than `right`.
+  """
+  def adjacent?(%Range{} = left, %Range{} = right) do
+    left = Version.to_range(left)
+    right = Version.to_range(right)
+
+    left.max != right.min and
+      ((left.include_max and not right.include_min) or
+         (not left.include_max and right.include_min))
+  end
+
+  def from_bounds(%Elixir.Version{} = lower, %Elixir.Version{} = upper) do
     case Version.compare(lower, upper) do
       :eq -> lower
       :lt -> %Range{min: lower, max: upper, include_min: true, include_max: true}

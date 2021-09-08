@@ -25,11 +25,9 @@ defmodule Resolver.Constraints.RangeTest do
     end
 
     property "with different versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq do
         [min, max] = Enum.sort([version1, version2], Version)
 
         assert Range.valid?(%Range{min: min, max: max})
@@ -38,7 +36,7 @@ defmodule Resolver.Constraints.RangeTest do
     end
 
     property "with same version" do
-      check all(version <- versions()) do
+      check all version <- version() do
         assert Range.valid?(%Range{
                  min: version,
                  max: version,
@@ -107,18 +105,16 @@ defmodule Resolver.Constraints.RangeTest do
     end
 
     property "with different versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq,
-              version4 <- versions(),
-              Version.compare(version1, version4) != :eq,
-              Version.compare(version2, version4) != :eq,
-              Version.compare(version3, version4) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq,
+                version4 <- version(),
+                Version.compare(version1, version4) != :eq,
+                Version.compare(version2, version4) != :eq,
+                Version.compare(version3, version4) != :eq do
         [version1, version2, version3, version4] =
           Enum.sort([version1, version2, version3, version4], Version)
 
@@ -140,14 +136,12 @@ defmodule Resolver.Constraints.RangeTest do
     end
 
     property "with same versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq do
         [version1, version2, version3] = Enum.sort([version1, version2, version3], Version)
 
         assert Range.overlapping?(
@@ -168,14 +162,12 @@ defmodule Resolver.Constraints.RangeTest do
     end
 
     property "with nil" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq do
         [version1, version2, version3] = Enum.sort([version1, version2, version3], Version)
 
         assert Range.overlapping?(
@@ -198,18 +190,16 @@ defmodule Resolver.Constraints.RangeTest do
 
   describe "allows_all?/2" do
     property "with different versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq,
-              version4 <- versions(),
-              Version.compare(version1, version4) != :eq,
-              Version.compare(version2, version4) != :eq,
-              Version.compare(version3, version4) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq,
+                version4 <- version(),
+                Version.compare(version1, version4) != :eq,
+                Version.compare(version2, version4) != :eq,
+                Version.compare(version3, version4) != :eq do
         [version1, version2, version3, version4] =
           Enum.sort([version1, version2, version3, version4], Version)
 
@@ -238,18 +228,16 @@ defmodule Resolver.Constraints.RangeTest do
 
   describe "allows_higher?/2" do
     property "with different versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq,
-              version4 <- versions(),
-              Version.compare(version1, version4) != :eq,
-              Version.compare(version2, version4) != :eq,
-              Version.compare(version3, version4) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq,
+                version4 <- version(),
+                Version.compare(version1, version4) != :eq,
+                Version.compare(version2, version4) != :eq,
+                Version.compare(version3, version4) != :eq do
         [version1, version2, version3, version4] =
           Enum.sort([version1, version2, version3, version4], Version)
 
@@ -278,18 +266,16 @@ defmodule Resolver.Constraints.RangeTest do
 
   describe "allows_lower?/2" do
     property "with different versions" do
-      check all(
-              version1 <- versions(),
-              version2 <- versions(),
-              Version.compare(version1, version2) != :eq,
-              version3 <- versions(),
-              Version.compare(version1, version3) != :eq,
-              Version.compare(version2, version3) != :eq,
-              version4 <- versions(),
-              Version.compare(version1, version4) != :eq,
-              Version.compare(version2, version4) != :eq,
-              Version.compare(version3, version4) != :eq
-            ) do
+      check all version1 <- version(),
+                version2 <- version(),
+                Version.compare(version1, version2) != :eq,
+                version3 <- version(),
+                Version.compare(version1, version3) != :eq,
+                Version.compare(version2, version3) != :eq,
+                version4 <- version(),
+                Version.compare(version1, version4) != :eq,
+                Version.compare(version2, version4) != :eq,
+                Version.compare(version3, version4) != :eq do
         [version1, version2, version3, version4] =
           Enum.sort([version1, version2, version3, version4], Version)
 

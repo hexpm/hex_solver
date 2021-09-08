@@ -5,10 +5,10 @@ defmodule Resolver.RequirementTest do
   alias Resolver.Requirement
   alias Resolver.Constraints.{Range, Union}
 
-  describe "parse!/" do
-    property "always parses" do
-      check all(requirement <- requirements()) do
-        constraint = Requirement.parse!(requirement.source)
+  describe "to_constraint!/" do
+    property "always converts" do
+      check all requirement <- requirement() do
+        constraint = Requirement.to_constraint!(requirement.source)
         assert constraint.__struct__ in [Range, Union, Version]
       end
     end

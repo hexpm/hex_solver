@@ -1,9 +1,15 @@
 defmodule Resolver.Constraints.Union do
+  use Resolver.Constraints.Impl
+
   alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Util}
+  alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
 
   # List of ranges or versions
   defstruct ranges: []
+
+  def allows?(%Union{ranges: ranges}, %Elixir.Version{} = version) do
+    Enum.any?(ranges, &Constraint.allows?(&1, version))
+  end
 
   def allows_all?(%Union{ranges: left}, %Union{ranges: right}) do
     do_allows_all?(left, right)
@@ -12,7 +18,7 @@ defmodule Resolver.Constraints.Union do
   # We can recurse left and right together since they are
   # sorted on minimum version
   defp do_allows_all?([left | lefts], [right | rights]) do
-    if Range.allows_all?(left, right) do
+    if Constraint.allows_all?(left, right) do
       do_allows_all?([left | lefts], rights)
     else
       do_allows_all?(lefts, [right | rights])
@@ -45,7 +51,7 @@ defmodule Resolver.Constraints.Union do
   defp do_allows_any?(_lefts, _rights), do: false
 
   def difference(%Union{ranges: left}, %Union{ranges: right}) do
-    do_difference(left, right, [])
+    do_difference(to_ranges(left), to_ranges(right), [])
   end
 
   defp do_difference(lefts, [], acc) do
@@ -60,16 +66,15 @@ defmodule Resolver.Constraints.Union do
 
   defp do_difference([left | lefts], [right | rights], acc) do
     cond do
-      Constraint.strictly_lower?(right, left) ->
+      Range.strictly_lower?(right, left) ->
         do_difference([left | lefts], rights, acc)
 
-      Constraint.strictly_higher?(right, left) ->
+      Range.strictly_higher?(right, left) ->
         do_difference(lefts, [right | rights], [left | acc])
 
       true ->
         # Left and right overlaps
-        # TODO: match %Version{}
-        case Constraint.difference(left, right) do
+        case Range.difference(left, right) do
           %Union{ranges: [first, last]} ->
             # If right splits left in half, we only need to check future ranges
             # against the latter half
@@ -115,5 +120,9 @@ defmodule Resolver.Constraints.Union do
 
   def union(%Union{} = left, %Union{} = right) do
     Util.union_of([left, right])
+  end
+
+  defp to_ranges(ranges) do
+    Enum.map(ranges, &Version.to_range/1)
   end
 end

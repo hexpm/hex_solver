@@ -2,6 +2,8 @@ ExUnit.start()
 
 defmodule Resolver.Case do
   use ExUnit.CaseTemplate
+  alias Resolver.Requirement
+  alias Resolver.Constraints.{Empty, Range}
 
   using do
     quote do
@@ -9,11 +11,15 @@ defmodule Resolver.Case do
     end
   end
 
-  def requirements() do
+  def requirement() do
     StreamData.member_of(:persistent_term.get({:resolver_test, :requirements}))
   end
 
-  def versions() do
+  def constraint() do
+    StreamData.member_of(:persistent_term.get({:resolver_test, :constraints}))
+  end
+
+  def version() do
     StreamData.member_of(:persistent_term.get({:resolver_test, :versions}))
   end
 
@@ -46,8 +52,12 @@ defmodule Resolver.Case do
       |> Enum.shuffle()
       |> Enum.map(&Version.parse_requirement!/1)
 
+    constraints = Enum.map(requirements, &Requirement.to_constraint!/1)
+    constraints = [%Empty{}, %Range{}] ++ constraints
+
     :persistent_term.put({:resolver_test, :versions}, versions)
     :persistent_term.put({:resolver_test, :requirements}, requirements)
+    :persistent_term.put({:resolver_test, :constraints}, constraints)
   end
 
   def v(major, minor, patch, pre) do

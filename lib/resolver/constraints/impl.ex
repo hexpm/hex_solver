@@ -1,18 +1,22 @@
 defmodule Resolver.Constraints.Impl do
-  defmacro __using__(_opts) do
+  defmacro __using__(opts) do
+    for = Keyword.get(opts, :for, __CALLER__.module)
     quote do
-      defimpl Resolver.Constraint do
+      defimpl Resolver.Constraint, for: unquote(for) do
+        def any?(constraint),
+          do: unquote(__CALLER__.module).any?(constraint)
+
+        def empty?(constraint),
+          do: unquote(__CALLER__.module).empty?(constraint)
+
+        def allows?(constraint, version),
+          do: unquote(__CALLER__.module).allows?(constraint, version)
+
         def allows_any?(left, right),
           do: unquote(__CALLER__.module).allows_any?(left, right)
 
-        def allows_higher?(left, right),
-          do: unquote(__CALLER__.module).allows_higher?(left, right)
-
-        def strictly_lower?(left, right),
-          do: unquote(__CALLER__.module).strictly_lower?(left, right)
-
-        def strictly_higher?(left, right),
-          do: unquote(__CALLER__.module).strictly_higher?(left, right)
+        def allows_all?(left, right),
+          do: unquote(__CALLER__.module).allows_all?(left, right)
 
         def difference(left, right),
           do: unquote(__CALLER__.module).difference(left, right)

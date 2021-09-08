@@ -1,4 +1,6 @@
 defmodule Resolver.Constraints.Range do
+  use Resolver.Constraints.Impl
+
   alias Resolver.Constraints.{Empty, Range, Union, Version}
 
   defstruct min: nil,
@@ -33,6 +35,22 @@ defmodule Resolver.Constraints.Range do
 
       :gt ->
         false
+    end
+  end
+
+  def any?(%Range{min: nil, max: nil}), do: true
+  def any?(%Range{}), do: false
+
+  def empty?(%Range{}), do: false
+
+  def allows?(%Range{} = range, %Elixir.Version{} = version) do
+    compare_min = version_compare(range.min, version)
+
+    if compare_min == :lt or (compare_min == :eq and range.include_min) do
+      compare_max = version_compare(version, range.max)
+      compare_max == :lt or (compare_max == :eq and range.include_max)
+    else
+      false
     end
   end
 
@@ -75,17 +93,6 @@ defmodule Resolver.Constraints.Range do
           :gt -> true
           :eq -> left.include_max and not right.include_max
         end
-    end
-  end
-
-  def allows?(%Range{} = range, %Elixir.Version{} = version) do
-    compare_min = Version.compare(version, range.min)
-
-    if compare_min == :gt or (compare_min == :eq and range.include_min) do
-      compare_max = Version.compare(version, range.max)
-      compare_max == :lt or (compare_max == :eq and range.include_max)
-    else
-      false
     end
   end
 
@@ -199,17 +206,4 @@ defmodule Resolver.Constraints.Range do
   defp version_compare(nil, _right), do: :lt
   defp version_compare(_left, nil), do: :lt
   defp version_compare(left, right), do: Version.compare(left, right)
-
-  defimpl Resolver.Constraint do
-    alias Resolver.Constraints.Range, as: R
-
-    defdelegate allows?(constraint, version), to: R
-    defdelegate allows_any?(left, right), to: R
-    defdelegate allows_all?(left, right), to: R
-    defdelegate allows_higher?(left, right), to: R
-    defdelegate strictly_lower?(left, right), to: R
-    defdelegate strictly_higher?(left, right), to: R
-    defdelegate difference(left, right), to: R
-    defdelegate intersect(left, right), to: R
-  end
 end

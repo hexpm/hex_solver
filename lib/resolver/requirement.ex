@@ -3,13 +3,13 @@ defmodule Resolver.Requirement do
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
 
-  def parse!(string) do
+  def to_constraint!(string) when is_binary(string) do
     string
     |> Elixir.Version.parse_requirement!()
-    |> requirement_to_constraint()
+    |> to_constraint!()
   end
 
-  defp requirement_to_constraint(requirement) do
+  def to_constraint!(%Elixir.Version.Requirement{} = requirement) do
     requirement.lexed
     |> Enum.map(fn
       {major, minor, patch, pre, _} -> {major, minor, patch, pre}
@@ -19,7 +19,7 @@ defmodule Resolver.Requirement do
   end
 
   defp delex([], acc) do
-    # TODO: Constraint.compare
+    # TODO: Constraint.compare_min
     acc
     |> Enum.sort_by(
       fn

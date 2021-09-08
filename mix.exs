@@ -23,7 +23,7 @@ defmodule Resolver.MixProject do
   defp deps do
     [
       {:hex_core, "~> 0.8.2", only: :dev},
-      {:stream_data, "~> 0.5.0", only: :test}
+      {:stream_data, "~> 0.5.0", only: [:dev, :test]}
     ]
   end
 

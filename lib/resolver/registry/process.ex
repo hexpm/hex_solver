@@ -16,7 +16,7 @@ defmodule Resolver.Registry.Process do
 
     dependencies =
       Enum.map(dependencies, fn {package, requirement} ->
-        {package, Resolver.Requirement.parse!(requirement)}
+        {package, Resolver.Requirement.to_constraint!(requirement)}
       end)
 
     Process.put({__MODULE__, :versions, package}, versions)
