@@ -51,7 +51,7 @@ defmodule Resolver do
         # incompatibility is also contradicted so we can deduce nothing
         {:error, :none}
 
-      :overlapping when is_nil(unsatisified) ->
+      :overlapping when unsatisified == nil ->
         propagate_incompatability(terms, term, incompatibility, state)
 
       :overlapping ->
@@ -176,6 +176,10 @@ defmodule Resolver do
           {version, dependencies[dependency]}
         end)
 
+      # Find range of versions around the current version for which the
+      # constraint is the same to create an incompatibility based on a
+      # larger set of versions for the parent package.
+      # This optimization let us skip many versions during conflict resolution.
       upper = next_bound(versions_constraint, version, constraint)
       lower = next_bound(Enum.reverse(versions_constraint), version, constraint)
 

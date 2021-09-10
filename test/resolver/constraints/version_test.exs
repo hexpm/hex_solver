@@ -101,14 +101,77 @@ defmodule Resolver.Constraints.VersionTest do
     assert Version.intersect(v("3.0.0"), %Union{ranges: [v("1.0.0"), v("2.0.0")]}) == %Empty{}
   end
 
-  property "union/2" do
-    check all version <- version(),
-              constraint <- constraint(),
-              version != constraint,
-              constraint != %Empty{} do
-      assert Version.union(version, %Empty{}) == version
-      assert Version.union(version, version) == version
-      assert Version.union(version, constraint).__struct__ in [Range, Union]
+  describe "union/2" do
+    test "samples" do
+      assert Version.union(v("1.0.0"), %Empty{}) == v("1.0.0")
+      assert Version.union(v("1.0.0"), v("1.0.0")) == v("1.0.0")
+      assert Version.union(v("1.0.0"), v("2.0.0")) == %Union{ranges: [v("1.0.0"), v("2.0.0")]}
+
+      assert Version.union(v("2.0.0"), %Range{min: v("1.0.0"), max: v("3.0.0")}) ==
+               %Range{min: v("1.0.0"), max: v("3.0.0")}
+
+      assert Version.union(v("3.0.0"), %Range{min: v("1.0.0"), max: v("2.0.0")}) ==
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("2.0.0")}, v("3.0.0")]}
+
+      assert Version.union(v("1.0.0"), %Range{min: v("2.0.0"), max: v("3.0.0")}) ==
+               %Union{ranges: [v("1.0.0"), %Range{min: v("2.0.0"), max: v("3.0.0")}]}
+
+      assert Version.union(v("1.0.0"), %Union{ranges: [v("2.0.0"), v("3.0.0")]}) ==
+               %Union{ranges: [v("1.0.0"), v("2.0.0"), v("3.0.0")]}
+
+      assert Version.union(v("2.0.0"), %Union{ranges: [v("1.0.0"), v("3.0.0")]}) ==
+               %Union{ranges: [v("1.0.0"), v("2.0.0"), v("3.0.0")]}
+
+      assert Version.union(v("3.0.0"), %Union{ranges: [v("1.0.0"), v("2.0.0")]}) ==
+               %Union{ranges: [v("1.0.0"), v("2.0.0"), v("3.0.0")]}
+
+      assert Version.union(
+               v("2.0.0"),
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0")]}
+             ) ==
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0")]}
+
+      assert Version.union(
+               v("4.0.0"),
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0")]}
+             ) ==
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0")]}
+
+      assert Version.union(
+               v("5.0.0"),
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0")]}
+             ) ==
+               %Union{ranges: [%Range{min: v("1.0.0"), max: v("3.0.0")}, v("4.0.0"), v("5.0.0")]}
+    end
+
+    property "with empty" do
+      check all version <- version() do
+        assert Version.union(version, %Empty{}) == version
+      end
+    end
+
+    property "with same version" do
+      check all version <- version() do
+        assert Version.union(version, version) == version
+      end
+    end
+
+    property "with different version" do
+      check all version1 <- version(),
+                version2 <- version(),
+                version1 != version2 do
+        ranges = Enum.sort([version1, version2], Version)
+        assert Version.union(version1, version2) == %Union{ranges: ranges}
+      end
+    end
+
+    property "with other types" do
+      check all version <- version(),
+                constraint <- constraint(),
+                version != constraint,
+                constraint != %Empty{} do
+        assert Version.union(version, constraint).__struct__ in [Range, Union]
+      end
     end
   end
 
@@ -128,7 +191,7 @@ defmodule Resolver.Constraints.VersionTest do
     end
   end
 
-  property "to_range/1" do
+  property "to_range/1 gives single version range" do
     check all version <- version() do
       assert Range.single_version?(Version.to_range(version))
     end

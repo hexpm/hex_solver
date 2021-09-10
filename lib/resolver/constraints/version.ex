@@ -76,7 +76,7 @@ defmodule Resolver.Constraints.Version do
   end
 
   def compare(%Version{} = version, %Range{min: min, include_min: include_min}) do
-    if is_nil(min) do
+    if min == nil do
       :gt
     else
       case Version.compare(version, min) do

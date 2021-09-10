@@ -7,7 +7,7 @@ defmodule Resolver.Constraints.Union do
   # We will always work under the following assumptions for unions:
   # * Minimum of two elements
   # * Only %Range{} and %Version{}, no %Empty{}
-  # * No "any range" (%Range{min: nil, max: nil}
+  # * No "any range" (%Range{min: nil, max: nil})
   # * Elements sorted by their minimum version
 
   defstruct ranges: []
@@ -20,7 +20,7 @@ defmodule Resolver.Constraints.Union do
     Enum.any?(ranges, &Constraint.allows?(&1, version))
   end
 
-  def allows_all?(%Union{ranges: left}, %Union{ranges: right}) do
+  def allows_all?(%Union{} = left, right) do
     do_allows_all?(left, right)
   end
 
@@ -37,7 +37,7 @@ defmodule Resolver.Constraints.Union do
   defp do_allows_all?(_lefts, []), do: true
   defp do_allows_all?([], _rights), do: false
 
-  def allows_any?(%Union{ranges: left}, %Union{ranges: right}) do
+  def allows_any?(%Union{} = left, right) do
     do_allows_any?(to_ranges(left), to_ranges(right))
   end
 
@@ -59,7 +59,7 @@ defmodule Resolver.Constraints.Union do
 
   defp do_allows_any?(_lefts, _rights), do: false
 
-  def difference(%Union{ranges: left}, %Union{ranges: right}) do
+  def difference(%Union{} = left, right) do
     do_difference(to_ranges(left), to_ranges(right), [])
   end
 
@@ -106,7 +106,7 @@ defmodule Resolver.Constraints.Union do
     end
   end
 
-  def intersect(%Union{ranges: left}, %Union{ranges: right}) do
+  def intersect(%Union{} = left, right) do
     do_intersect(to_ranges(left), to_ranges(right), [])
   end
 
@@ -127,7 +127,7 @@ defmodule Resolver.Constraints.Union do
   defp do_intersect(_lefts, [], acc), do: Util.from_list(acc)
   defp do_intersect([], _rights, acc), do: Util.from_list(acc)
 
-  def union(%Union{} = left, %Union{} = right) do
+  def union(%Union{} = left, right) do
     Util.union([left, right])
   end
 
@@ -135,7 +135,8 @@ defmodule Resolver.Constraints.Union do
     Constraint.compare(range, right)
   end
 
-  defp to_ranges(ranges) do
-    Enum.map(ranges, &Version.to_range/1)
-  end
+  defp to_ranges(%Empty{}), do: []
+  defp to_ranges(%Elixir.Version{} = version), do: [Version.to_range(version)]
+  defp to_ranges(%Range{} = range), do: [range]
+  defp to_ranges(%Union{ranges: ranges}), do: Enum.map(ranges, &Version.to_range/1)
 end

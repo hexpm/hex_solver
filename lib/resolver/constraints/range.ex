@@ -1,11 +1,12 @@
 defmodule Resolver.Constraints.Range do
   use Resolver.Constraints.Impl
 
+  alias Resolver.Constraint
   alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
 
-  # NOTE: %Range{min: nil, max: nil} allows any version.
-  # NOTE: %Range{min: min, max: max, include_min: true, include_max: true}
-  #       when min == max is a single version.
+  # %Range{min: nil, max: nil} allows any version.
+  # %Range{min: min, max: max, include_min: true, include_max: true}
+  # when min == max is a single version.
   defstruct min: nil,
             max: nil,
             include_min: false,
@@ -57,8 +58,15 @@ defmodule Resolver.Constraints.Range do
     end
   end
 
+  def allows_all?(%Range{}, %Empty{}), do: true
+  def allows_all?(%Range{} = range, %Elixir.Version{} = version), do: allows?(range, version)
+
   def allows_all?(%Range{} = left, %Range{} = right) do
     not allows_lower?(right, left) and not allows_higher?(right, left)
+  end
+
+  def allows_all?(%Range{} = range, %Union{ranges: ranges}) do
+    Enum.all?(ranges, &allows_all?(range, &1))
   end
 
   def allows_any?(%Range{}, %Empty{}), do: true
@@ -74,10 +82,10 @@ defmodule Resolver.Constraints.Range do
 
   def allows_lower?(%Range{} = left, %Range{} = right) do
     cond do
-      is_nil(left.min) ->
-        not is_nil(right.min)
+      left.min == nil ->
+        right.min != nil
 
-      is_nil(right.min) ->
+      right.min == nil ->
         false
 
       true ->
@@ -91,10 +99,10 @@ defmodule Resolver.Constraints.Range do
 
   def allows_higher?(%Range{} = left, %Range{} = right) do
     cond do
-      is_nil(left.max) ->
-        not is_nil(right.max)
+      left.max == nil ->
+        right.max != nil
 
-      is_nil(right.max) ->
+      right.max == nil ->
         false
 
       true ->
@@ -106,8 +114,20 @@ defmodule Resolver.Constraints.Range do
     end
   end
 
+  def strictly_lower?(%Elixir.Version{} = left, %Elixir.Version{} = right) do
+    Version.compare(left, right) == :lt
+  end
+
+  def strictly_lower?(%Range{} = range, %Elixir.Version{} = version) do
+    range.max != nil and Version.compare(range.max, version) == :lt
+  end
+
+  def strictly_lower?(%Elixir.Version{} = version, %Range{} = range) do
+    range.min != nil and Version.compare(version, range.min) == :lt
+  end
+
   def strictly_lower?(%Range{} = left, %Range{} = right) do
-    if is_nil(left.max) or is_nil(right.min) do
+    if left.max == nil or right.min == nil do
       false
     else
       case Version.compare(left.max, right.min) do
@@ -118,8 +138,33 @@ defmodule Resolver.Constraints.Range do
     end
   end
 
-  def strictly_higher?(%Range{} = left, %Range{} = right) do
+  def strictly_higher?(left, right) do
     strictly_lower?(right, left)
+  end
+
+  def difference(%Range{} = range, %Empty{}) do
+    range
+  end
+
+  def difference(%Range{} = range, %Elixir.Version{} = version) do
+    cond do
+      not allows?(range, version) ->
+        range
+
+      range.min == version ->
+        %{range | include_min: false}
+
+      range.max == version ->
+        %{range | include_max: false}
+
+      true ->
+        %Union{
+          ranges: [
+            %{range | max: version, include_max: false},
+            %{range | min: version, include_min: false}
+          ]
+        }
+    end
   end
 
   def difference(%Range{} = left, %Range{} = right) do
@@ -131,7 +176,7 @@ defmodule Resolver.Constraints.Range do
 
           left.min == right.min ->
             true = left.include_min and not right.include_min
-            true = not is_nil(left.min)
+            true = left.min != nil
             left.min
 
           true ->
@@ -150,7 +195,7 @@ defmodule Resolver.Constraints.Range do
 
           left.max == right.max ->
             true = left.include_max and not right.include_max
-            true = not is_nil(left.max)
+            true = left.max != nil
             left.max
 
           true ->
@@ -158,18 +203,56 @@ defmodule Resolver.Constraints.Range do
               min: right.max,
               max: left.max,
               include_min: not right.include_min,
-              include_max: not left.include_max
+              include_max: left.include_max
             }
         end
 
       cond do
-        is_nil(before_range) and is_nil(after_range) -> %Empty{}
-        is_nil(before_range) -> after_range
-        is_nil(after_range) -> before_range
+        before_range == nil and after_range == nil -> %Empty{}
+        before_range == nil -> after_range
+        after_range == nil -> before_range
         true -> %Union{ranges: [before_range, after_range]}
       end
     else
       left
+    end
+  end
+
+  def difference(%Range{} = range, %Union{} = union) do
+    {range, ranges} =
+      Enum.reduce_while(union.ranges, {range, []}, fn union_range, {range, acc} ->
+        cond do
+          strictly_lower?(union_range, range) ->
+            {:cont, {range, acc}}
+
+          strictly_higher?(union_range, range) ->
+            {:halt, {range, acc}}
+
+          true ->
+            case Constraint.difference(range, union_range) do
+              %Empty{} -> {:halt, {range, %Empty{}}}
+              %Union{ranges: [first, last]} -> {:cont, {last, [first | acc]}}
+              constraint -> {:cont, {constraint, acc}}
+            end
+        end
+      end)
+
+    case ranges do
+      %Empty{} -> %Empty{}
+      [] -> range
+      _ -> %Union{ranges: Enum.reverse([range | ranges])}
+    end
+  end
+
+  def intersect(%Range{}, %Empty{}) do
+    %Empty{}
+  end
+
+  def intersect(%Range{} = range, %Elixir.Version{} = version) do
+    if allows?(range, version) do
+      version
+    else
+      %Empty{}
     end
   end
 
@@ -192,7 +275,7 @@ defmodule Resolver.Constraints.Range do
         end
 
       cond do
-        is_nil(intersect_min) and is_nil(intersect_max) ->
+        intersect_min == nil and intersect_max == nil ->
           # Open range
           %Range{}
 
@@ -211,6 +294,14 @@ defmodule Resolver.Constraints.Range do
           }
       end
     end
+  end
+
+  def intersect(%Range{} = range, %Union{} = union) do
+    Union.intersect(union, range)
+  end
+
+  def union(%Range{} = range, %Empty{}) do
+    range
   end
 
   def union(%Range{} = range, %Elixir.Version{} = version) do
@@ -241,8 +332,8 @@ defmodule Resolver.Constraints.Range do
     end
   end
 
-  def union(%Range{} = left, right) do
-    Util.union([left, right])
+  def union(%Range{} = range, %Union{} = union) do
+    Util.union([range, union])
   end
 
   defp edges_touch?(left, right) do
@@ -251,7 +342,7 @@ defmodule Resolver.Constraints.Range do
   end
 
   def compare(%Range{min: min, include_min: include_min}, %Elixir.Version{} = version) do
-    if is_nil(min) do
+    if min == nil do
       :lt
     else
       case Version.compare(min, version) do
@@ -265,18 +356,18 @@ defmodule Resolver.Constraints.Range do
 
   def compare(%Range{} = left, %Range{} = right) do
     cond do
-      is_nil(left.min) and is_nil(right.min) ->
+      left.min == nil and right.min == nil ->
         :eq
 
-      is_nil(left.min) ->
+      left.min == nil ->
         :lt
 
-      is_nil(right.min) ->
+      right.min == nil ->
         :gt
 
       true ->
         case Version.compare(left.min, right.min) do
-          :eq when left.include_min == right.include -> :eq
+          :eq when left.include_min == right.include_min -> :eq
           :eq when left.include_min -> :lt
           :eq when right.include_min -> :gt
           :lt -> :lt
