@@ -28,6 +28,28 @@ defmodule ResolverTest do
       assert run() == %{"$root" => "1.0.0", "foo" => "1.1.0"}
     end
 
+    test "single loose dep with multiple versions" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("foo", "1.0.0", [])
+      assert run() == %{"$root" => "1.0.0", "foo" => "1.1.0"}
+    end
+
+    test "single older dep with multiple versions" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0.0"}])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("foo", "1.0.0", [])
+      assert run() == %{"$root" => "1.0.0", "foo" => "1.0.0"}
+    end
+
+    test "single older dep with dependency and multiple versions" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0.0"}])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [])
+      assert run() == %{"$root" => "1.0.0", "foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
     test "two deps" do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "2.0.0"}])
       Registry.put("foo", "1.0.0", [])
@@ -40,6 +62,17 @@ defmodule ResolverTest do
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
       Registry.put("bar", "1.0.0", [])
       assert run() == %{"$root" => "1.0.0", "foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
+    test "backtrack" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.1.0", [{"baz", "1.1.0"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}])
+      Registry.put("baz", "1.1.0", [])
+      Registry.put("baz", "1.0.0", [])
+      assert run() == %{"$root" => "1.0.0", "foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
     end
   end
 end

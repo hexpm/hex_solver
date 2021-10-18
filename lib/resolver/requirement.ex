@@ -35,11 +35,11 @@ defmodule Resolver.Requirement do
     |> Util.from_list()
   end
 
-  defp delex([:|| | rest], acc) do
+  defp delex([op | rest], acc) when op in [:||, :or] do
     delex(rest, acc)
   end
 
-  defp delex([op1, version1, :&&, op2, version2 | rest], acc) do
+  defp delex([op1, version1, op, op2, version2 | rest], acc) when op in [:&&, :and] do
     range = to_range(op1, version1, op2, version2)
     delex(rest, [range | acc])
   end

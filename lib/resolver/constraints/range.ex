@@ -391,4 +391,34 @@ defmodule Resolver.Constraints.Range do
   defp version_compare(nil, _right), do: :lt
   defp version_compare(_left, nil), do: :lt
   defp version_compare(left, right), do: Version.compare(left, right)
+
+  defimpl String.Chars do
+    def to_string(%{min: nil, max: nil}) do
+      "any"
+    end
+
+    def to_string(%{min: version, max: version, include_min: true, include_max: true}) do
+      version
+    end
+
+    def to_string(%{min: min, max: max, include_min: include_min, include_max: include_max}) do
+      min = if min, do: ">#{include(include_min)} #{min}"
+      max = if max, do: "<#{include(include_max)} #{max}"
+
+      if min && max do
+        "#{min} and #{max}"
+      else
+        min || max
+      end
+    end
+
+    defp include(true), do: "="
+    defp include(false), do: ""
+  end
+
+  defimpl Inspect do
+    def inspect(range, _opts) do
+      "#Range<#{range}>"
+    end
+  end
 end

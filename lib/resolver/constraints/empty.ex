@@ -31,4 +31,16 @@ defmodule Resolver.Constraints.Empty do
       args: [left, right],
       clauses: []
   end
+
+  defimpl String.Chars do
+    def to_string(_) do
+      "empty"
+    end
+  end
+
+  defimpl Inspect do
+    def inspect(_, _opts) do
+      "#Empty<>"
+    end
+  end
 end

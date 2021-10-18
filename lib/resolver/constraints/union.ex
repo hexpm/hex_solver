@@ -20,8 +20,12 @@ defmodule Resolver.Constraints.Union do
     Enum.any?(ranges, &Constraint.allows?(&1, version))
   end
 
-  def allows_all?(%Union{} = left, right) do
+  def allows_all?(%Union{ranges: left}, %Union{ranges: right}) do
     do_allows_all?(left, right)
+  end
+
+  def allows_all?(%Union{ranges: left}, right) do
+    do_allows_all?(left, [right])
   end
 
   # We can recurse left and right together since they are
@@ -139,4 +143,16 @@ defmodule Resolver.Constraints.Union do
   defp to_ranges(%Elixir.Version{} = version), do: [Version.to_range(version)]
   defp to_ranges(%Range{} = range), do: [range]
   defp to_ranges(%Union{ranges: ranges}), do: Enum.map(ranges, &Version.to_range/1)
+
+  defimpl String.Chars do
+    def to_string(%{ranges: ranges}) do
+      Enum.map_join(ranges, " or ", &Kernel.to_string/1)
+    end
+  end
+
+  defimpl Inspect do
+    def inspect(union, _opts) do
+      "#Union<#{union}>"
+    end
+  end
 end

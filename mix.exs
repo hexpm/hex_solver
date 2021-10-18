@@ -35,8 +35,7 @@ defmodule Resolver.MixProject do
   end
 
   defp resolver_registry(_args) do
-    Mix.Task.run("deps.get")
-    Mix.Task.run("deps.compile")
+    Mix.Task.run("deps.loadpaths")
     File.mkdir_p!("priv")
 
     {:ok, {200, _, names}} = :hex_repo.get_names(hex_config())
