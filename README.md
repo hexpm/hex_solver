@@ -11,7 +11,6 @@ To be used by [Hex](https://github.com/hexpm/hex).
 * Package repositories
 * Optional dependencies
 * Overridden dependencies
-* Locked dependencies
 * Error reporting
 
 ### To investigate

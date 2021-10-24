@@ -12,8 +12,8 @@ defmodule Resolver do
 
   require Logger
 
-  def run(registry) do
-    solve("$root", new_state(registry))
+  def run(registry, locked) do
+    solve("$root", new_state(registry, locked))
   end
 
   defp solve(next, state) do
@@ -109,7 +109,7 @@ defmodule Resolver do
     if unsatisfied == [] do
       :done
     else
-      case PackageLister.minimal_versions(state.registry, unsatisfied) do
+      case PackageLister.minimal_versions(state.registry, state.locked, unsatisfied) do
         {:ok, package_range, versions} ->
           if versions == [] do
             # TODO: Detect if the constraint excludes a single version, then it is
@@ -343,7 +343,7 @@ defmodule Resolver do
     end
   end
 
-  defp new_state(registry) do
+  defp new_state(registry, locked) do
     version = Version.parse!("1.0.0")
     package_range = %PackageRange{name: "$root", constraint: version}
     root = Incompatibility.new([%Term{positive: false, package_range: package_range}], :root)
@@ -351,7 +351,8 @@ defmodule Resolver do
     %{
       solution: %PartialSolution{},
       incompatibilities: %{},
-      registry: registry
+      registry: registry,
+      locked: locked
     }
     |> add_incompatibility(root)
   end

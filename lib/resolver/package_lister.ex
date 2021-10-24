@@ -4,13 +4,24 @@ defmodule Resolver.PackageLister do
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
-  def minimal_versions(registry, package_ranges) do
+  def minimal_versions(registry, locked, package_ranges) do
     package_range_versions =
       Enum.map(package_ranges, fn package_range ->
         case registry.versions(package_range.name) do
           {:ok, versions} ->
-            allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
-            {package_range, allowed}
+            case Map.fetch(locked, package_range.name) do
+              {:ok, version} ->
+                allowed =
+                  if Constraint.allows?(package_range.constraint, version),
+                    do: [version],
+                    else: []
+
+                {package_range, allowed}
+
+              :error ->
+                allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
+                {package_range, allowed}
+            end
 
           :error ->
             throw({__MODULE__, :minimal_versions, package_range.name})
