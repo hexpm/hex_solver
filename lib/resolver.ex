@@ -1,5 +1,14 @@
 defmodule Resolver do
-  alias Resolver.{Assignment, Constraint, Incompatibility, PackageRange, PartialSolution, Term}
+  alias Resolver.{
+    Assignment,
+    Constraint,
+    Incompatibility,
+    PackageLister,
+    PackageRange,
+    PartialSolution,
+    Term
+  }
+
   alias Resolver.Constraints.Util
 
   require Logger
@@ -113,7 +122,7 @@ defmodule Resolver do
               term = %Term{positive: true, package_range: package_range}
               incompatibility = Incompatibility.new([term], :package_not_found)
               state = add_incompatibility(state, incompatibility)
-              throw {__MODULE__, :choose_package_version, package_range.name, state}
+              throw({__MODULE__, :choose_package_version, package_range.name, state})
           end
         end)
 
@@ -136,7 +145,13 @@ defmodule Resolver do
       else
         # TODO: Pick "best" version instead of last versions
         version = List.last(versions)
-        incompatibilities = dependencies_as_incompatibilities(state, package_range.name, version)
+
+        incompatibilities =
+          PackageLister.dependencies_as_incompatibilities(
+            state.registry,
+            package_range.name,
+            version
+          )
 
         {state, conflict} =
           Enum.reduce(incompatibilities, {state, false}, fn incompatibility, {state, conflict} ->
@@ -186,40 +201,6 @@ defmodule Resolver do
   defp incompatibility_conflict?(state, incompatibility, name) do
     Enum.all?(incompatibility.terms, fn term ->
       term.package_range.name == name or PartialSolution.satisfies?(state.solution, term)
-    end)
-  end
-
-  # NOTE: Much of this can be cached
-  # TODO: Don't return incompatibilities we already returned
-  #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
-  defp dependencies_as_incompatibilities(state, package, version) do
-    {:ok, versions} = state.registry.versions(package)
-
-    versions_dependencies =
-      Map.new(versions, fn version ->
-        {:ok, dependencies} = state.registry.dependencies(package, version)
-        {version, Map.new(dependencies)}
-      end)
-
-    Enum.map(versions_dependencies[version], fn {dependency, constraint} ->
-      versions_constraint =
-        Enum.map(versions_dependencies, fn {version, dependencies} ->
-          {version, dependencies[dependency]}
-        end)
-
-      # Find range of versions around the current version for which the
-      # constraint is the same to create an incompatibility based on a
-      # larger set of versions for the parent package.
-      # This optimization let us skip many versions during conflict resolution.
-      # TODO: Remove bounds if there are none
-      lower = next_bound(Enum.reverse(versions_constraint), version, constraint)
-      upper = next_bound(versions_constraint, version, constraint)
-
-      package_range = %PackageRange{name: package, constraint: Util.from_bounds(lower, upper)}
-      dependency_range = %PackageRange{name: dependency, constraint: constraint}
-      package_term = %Term{positive: true, package_range: package_range}
-      dependency_term = %Term{positive: false, package_range: dependency_range}
-      Incompatibility.new([package_term, dependency_term], :dependency)
     end)
   end
 
@@ -356,7 +337,11 @@ defmodule Resolver do
           do: new_terms ++ [Assignment.inverse(resolution.difference)],
           else: new_terms
 
-      incompatibility = Incompatibility.new(new_terms, {:conflict, incompatibility, resolution.most_recent_satisfier.cause})
+      incompatibility =
+        Incompatibility.new(
+          new_terms,
+          {:conflict, incompatibility, resolution.most_recent_satisfier.cause}
+        )
 
       partially = if resolution.difference, do: " partially"
 
@@ -369,26 +354,6 @@ defmodule Resolver do
 
       do_conflict_resolution(state, incompatibility, true)
     end
-  end
-
-  defp next_bound([{version, _constraint} | versions_dependencies], version, constraint) do
-    find_bound(versions_dependencies, version, constraint)
-  end
-
-  defp next_bound([_ | versions_dependencies], version, constraint) do
-    find_bound(versions_dependencies, version, constraint)
-  end
-
-  defp find_bound([{version, constraint} | versions_dependencies], _last, constraint) do
-    find_bound(versions_dependencies, version, constraint)
-  end
-
-  defp find_bound([_ | _], last, _constraint) do
-    last
-  end
-
-  defp find_bound([], last, _constraint) do
-    last
   end
 
   defp new_state(registry) do

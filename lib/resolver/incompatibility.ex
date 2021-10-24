@@ -12,7 +12,8 @@ defmodule Resolver.Incompatibility do
 
   def new(terms, cause) do
     terms =
-      if length(terms) != 1 and match?({:conflict, _, _}, cause) and Enum.any?(terms, &(&1.positive or &1.package_range.name == "$root")) do
+      if length(terms) != 1 and match?({:conflict, _, _}, cause) and
+           Enum.any?(terms, &(&1.positive or &1.package_range.name == "$root")) do
         Enum.filter(terms, &(not &1.positive or &1.package_range.name != "$root"))
       else
         terms

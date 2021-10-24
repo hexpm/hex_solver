@@ -43,8 +43,6 @@ if Mix.env() == :dev do
       |> Enum.sort()
     end
 
-
-
     defp hex_config() do
       %{:hex_core.default_config() | http_adapter: {:hex_http_httpc, %{http_options: [ssl: []]}}}
     end
