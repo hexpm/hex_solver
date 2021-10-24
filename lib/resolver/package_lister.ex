@@ -1,6 +1,30 @@
 defmodule Resolver.PackageLister do
-  alias Resolver.{Incompatibility, PackageRange, Term}
+  alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
   alias Resolver.Constraints.Util
+
+  # Prefer packages with few remaining versions so that if there is conflict
+  # later it will be forced quickly
+  def minimal_versions(registry, package_ranges) do
+    package_range_versions =
+      Enum.map(package_ranges, fn package_range ->
+        case registry.versions(package_range.name) do
+          {:ok, versions} ->
+            allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
+            {package_range, allowed}
+
+          :error ->
+            throw({__MODULE__, :minimal_versions, package_range.name})
+        end
+      end)
+
+    {package_range, versions} =
+      Enum.min_by(package_range_versions, fn {_package_range, versions} -> length(versions) end)
+
+    {:ok, package_range, versions}
+  catch
+    :throw, {__MODULE__, :minimal_versions, name} ->
+      {:error, name}
+  end
 
   # NOTE: Much of this can be cached
   # TODO: Don't return incompatibilities we already returned
