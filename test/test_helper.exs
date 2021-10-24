@@ -33,30 +33,19 @@ defmodule Resolver.Case do
 
   def init_registry() do
     registry =
-      "priv/registry.term"
+      "test/fixtures/registry.json"
       |> File.read!()
-      |> :zlib.gunzip()
-      |> :erlang.binary_to_term()
+      |> Jason.decode!()
 
     versions =
       registry
-      |> Enum.flat_map(fn {_package, versions} ->
-        Enum.map(versions, & &1.version)
-      end)
-      |> Enum.uniq()
-      # |> Enum.sort(Resolver.Version)
+      |> Map.get("versions")
       |> Enum.shuffle()
       |> Enum.map(&Version.parse!/1)
 
     requirements =
       registry
-      |> Enum.flat_map(fn {_package, versions} ->
-        Enum.flat_map(versions, fn version ->
-          Enum.map(version.dependencies, & &1.requirement)
-        end)
-      end)
-      |> Enum.uniq()
-      # |> Enum.sort()
+      |> Map.get("requirements")
       |> Enum.shuffle()
       |> Enum.map(&Version.parse_requirement!/1)
 
