@@ -3,6 +3,13 @@ defmodule Resolver.Incompatibility do
 
   defstruct terms: [], cause: nil
 
+  # Causes:
+  # * {:conflict, incompatibility, cause}
+  # * :root
+  # * :dependency
+  # * :no_versions
+  # * :package_not_found
+
   def new(terms, cause) do
     terms =
       if length(terms) != 1 and match?({:conflict, _, _}, cause) and Enum.any?(terms, &(&1.positive or &1.package_range.name == "$root")) do

@@ -9,42 +9,50 @@ defmodule Resolver do
   end
 
   defp solve(next, state) do
-    state = unit_propagation([next], state)
+    case unit_propagation([next], state) do
+      {:ok, state} ->
+        case choose_package_version(state) do
+          :done -> {:ok, state.solution.decisions}
+          {:choice, package, state} -> solve(package, state)
+        end
 
-    case choose_package_version(state) do
-      :done -> state
-      {:choice, package, state} -> solve(package, state)
+      {:error, incompatibility} ->
+        {:error, incompatibility}
     end
   end
 
   defp unit_propagation([], state) do
-    state
+    {:ok, state}
   end
 
   defp unit_propagation([package | changed], state) do
     incompatibilities = Map.fetch!(state.incompatibilities, package)
 
-    {changed, state} =
+    result =
       Enum.reduce_while(incompatibilities, {changed, state}, fn
         incompatibility, {changed, state} ->
           case propagate_incompatibility(incompatibility.terms, nil, incompatibility, state) do
-            {:error, :conflict} ->
-              {:ok, root_cause, state} = conflict_resolution(state, incompatibility)
-
-              {:ok, result, state} =
-                propagate_incompatibility(root_cause.terms, nil, root_cause, state)
-
-              {:halt, {[result], state}}
-
-            {:ok, result, state} ->
-              {:cont, {changed ++ [result], state}}
-
-            {:error, :none} ->
-              {:cont, {changed, state}}
+            {:ok, result, state} -> {:cont, {changed ++ [result], state}}
+            {:error, :none} -> {:cont, {changed, state}}
+            {:error, :conflict} -> unit_propagation_conflict(incompatibility, state)
           end
       end)
 
-    unit_propagation(changed, state)
+    case result do
+      {:error, incompatibility} -> {:error, incompatibility}
+      {changed, state} -> unit_propagation(changed, state)
+    end
+  end
+
+  defp unit_propagation_conflict(incompatibility, state) do
+    case conflict_resolution(state, incompatibility) do
+      {:ok, root_cause, state} ->
+        {:ok, result, state} = propagate_incompatibility(root_cause.terms, nil, root_cause, state)
+        {:halt, {[result], state}}
+
+      {:error, incompatibility} ->
+        {:halt, {:error, incompatibility}}
+    end
   end
 
   defp propagate_incompatibility([term | terms], unsatisified, incompatibility, state) do
@@ -93,13 +101,20 @@ defmodule Resolver do
     if unsatisfied == [] do
       :done
     else
-      # TODO: Handle package not found
-      #       Use :package_not_found incompatibility cause?
       package_range_versions =
         Enum.map(unsatisfied, fn package_range ->
-          versions = state.registry.versions(package_range.name)
-          allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
-          {package_range, allowed}
+          case state.registry.versions(package_range.name) do
+            {:ok, versions} ->
+              allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
+              {package_range, allowed}
+
+            :error ->
+              package_range = %PackageRange{name: package_range.name, constraint: Util.any()}
+              term = %Term{positive: true, package_range: package_range}
+              incompatibility = Incompatibility.new([term], :package_not_found)
+              state = add_incompatibility(state, incompatibility)
+              throw {__MODULE__, :choose_package_version, package_range.name, state}
+          end
         end)
 
       # Prefer packages with few remaining versions so that if there is conflict
@@ -147,6 +162,9 @@ defmodule Resolver do
         {:choice, package_range.name, state}
       end
     end
+  catch
+    :throw, {__MODULE__, :choose_package_version, name, state} ->
+      {:choice, name, state}
   end
 
   defp add_incompatibility(state, incompatibility) do
@@ -175,10 +193,12 @@ defmodule Resolver do
   # TODO: Don't return incompatibilities we already returned
   #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
   defp dependencies_as_incompatibilities(state, package, version) do
-    # TODO: Handle package not found
+    {:ok, versions} = state.registry.versions(package)
+
     versions_dependencies =
-      Map.new(state.registry.versions(package), fn version ->
-        {version, Map.new(state.registry.dependencies(package, version))}
+      Map.new(versions, fn version ->
+        {:ok, dependencies} = state.registry.dependencies(package, version)
+        {version, Map.new(dependencies)}
       end)
 
     Enum.map(versions_dependencies[version], fn {dependency, constraint} ->
@@ -191,6 +211,7 @@ defmodule Resolver do
       # constraint is the same to create an incompatibility based on a
       # larger set of versions for the parent package.
       # This optimization let us skip many versions during conflict resolution.
+      # TODO: Remove bounds if there are none
       lower = next_bound(Enum.reverse(versions_constraint), version, constraint)
       upper = next_bound(versions_constraint, version, constraint)
 
@@ -209,14 +230,13 @@ defmodule Resolver do
     Logger.debug("RESOLVER: conflict #{incompatibility}")
     do_conflict_resolution(state, incompatibility, false)
   catch
-    :throw, {:resolver_conflict, incompatibility, state} ->
+    :throw, {__MODULE__, :conflict_resolution, incompatibility, state} ->
       {:ok, incompatibility, state}
   end
 
   defp do_conflict_resolution(state, incompatibility, new_incompatibility?) do
     if Incompatibility.failure?(incompatibility) do
-      # TODO
-      :solve_failure
+      {:error, incompatibility}
     else
       resolution = %{
         # The term in incompatibility.terms that was most recently satisfied by the solution.
@@ -307,7 +327,7 @@ defmodule Resolver do
             do: add_incompatibility(state, incompatibility),
             else: state
 
-        throw({:resolver_conflict, incompatibility, state})
+        throw({__MODULE__, :conflict_resolution, incompatibility, state})
       end
 
       # Create a new incompatibility be combining the given incompatibility with

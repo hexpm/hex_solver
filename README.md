@@ -8,7 +8,6 @@ To be used by [Hex](https://github.com/hexpm/hex).
 
 ### TODO
 
-* Missing packages
 * Package repositories
 * Optional dependencies
 * Overridden dependencies

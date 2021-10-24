@@ -2,11 +2,17 @@ defmodule Resolver.Registry.Process do
   @behaviour Resolver.Registry
 
   def versions(package) do
-    Process.get({__MODULE__, :versions, package})
+    case Process.get({__MODULE__, :versions, package}) do
+      nil -> :error
+      versions -> {:ok, versions}
+    end
   end
 
   def dependencies(package, version) do
-    Process.get({__MODULE__, :dependencies, package, version})
+    case Process.get({__MODULE__, :dependencies, package, version}) do
+      nil -> :error
+      dependencies -> {:ok, dependencies}
+    end
   end
 
   def put(package, version, dependencies) do

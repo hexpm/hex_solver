@@ -2,6 +2,8 @@ defmodule Resolver.Constraints.Util do
   alias Resolver.Constraint
   alias Resolver.Constraints.{Empty, Range, Union, Version}
 
+  def any(), do: %Range{}
+
   def from_list([]), do: %Empty{}
   def from_list([single]), do: single
   def from_list(acc), do: %Union{ranges: acc}
