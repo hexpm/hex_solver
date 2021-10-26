@@ -161,6 +161,19 @@ defmodule ResolverTest do
       assert run(%{"foo" => "1.1.0"}) == %{}
     end
 
+    test "skip optional with backtrack" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}, {"opt", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("bar", "1.1.0", [{"baz", "1.1.0"}, {"opt", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("baz", "1.1.0", [{"opt", "1.0.0"}])
+      Registry.put("baz", "1.0.0", [{"opt", "1.0.0", :optional}])
+      Registry.put("opt", "1.0.0", [])
+
+      assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
+    end
+
     test "select optional" do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0", :optional}, {"bar", "1.0.0"}])
       Registry.put("foo", "1.0.0", [])
@@ -176,6 +189,19 @@ defmodule ResolverTest do
       Registry.put("bar", "1.0.0", [{"foo", "~> 1.0"}])
 
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
+    test "select optional with backtrack" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}, {"opt", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("bar", "1.1.0", [{"baz", "1.1.0"}, {"opt", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("baz", "1.1.0", [{"opt", "1.0.0", :optional}])
+      Registry.put("baz", "1.0.0", [{"opt", "1.0.0"}])
+      Registry.put("opt", "1.0.0", [])
+
+      assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0", "opt" => "1.0.0"}
     end
   end
 end
