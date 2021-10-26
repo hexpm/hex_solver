@@ -145,4 +145,37 @@ defmodule ResolverTest do
       assert run(%{"foo" => "1.1.0"}) == %{"foo" => "1.1.0"}
     end
   end
+
+  describe "run/0 optional" do
+    test "skip single optional" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0", :optional}])
+      Registry.put("foo", "1.0.0", [])
+
+      assert run() == %{}
+    end
+
+    test "skip locked optional" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0", :optional}])
+      Registry.put("foo", "1.0.0", [])
+
+      assert run(%{"foo" => "1.1.0"}) == %{}
+    end
+
+    test "select optional" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0", :optional}, {"bar", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])
+
+      assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
+    test "select older optional" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0.0", :optional}, {"bar", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("bar", "1.0.0", [{"foo", "~> 1.0"}])
+
+      assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+  end
 end

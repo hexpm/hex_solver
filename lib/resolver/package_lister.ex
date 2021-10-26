@@ -7,9 +7,13 @@ defmodule Resolver.PackageLister do
   def minimal_versions(registry, locked, package_ranges) do
     package_range_versions =
       Enum.map(package_ranges, fn package_range ->
-        case registry.versions(package_range.name) do
+        name = String.trim_trailing(package_range.name, "$optional")
+
+        case registry.versions(name) do
           {:ok, versions} ->
-            case Map.fetch(locked, package_range.name) do
+            # TODO: This wont give a good error message when the lock file
+            #       prevents a solution
+            case Map.fetch(locked, name) do
               {:ok, version} ->
                 allowed =
                   if Constraint.allows?(package_range.constraint, version),
@@ -24,7 +28,7 @@ defmodule Resolver.PackageLister do
             end
 
           :error ->
-            throw({__MODULE__, :minimal_versions, package_range.name})
+            throw({__MODULE__, :minimal_versions, name})
         end
       end)
 
@@ -41,6 +45,7 @@ defmodule Resolver.PackageLister do
   # TODO: Don't return incompatibilities we already returned
   #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
   def dependencies_as_incompatibilities(registry, package, version) do
+    package = String.trim_trailing(package, "$optional")
     {:ok, versions} = registry.versions(package)
 
     versions_dependencies =
@@ -49,7 +54,7 @@ defmodule Resolver.PackageLister do
         {version, Map.new(dependencies)}
       end)
 
-    Enum.map(versions_dependencies[version], fn {dependency, constraint} ->
+    Enum.map(versions_dependencies[version], fn {dependency, {constraint, optional}} ->
       versions_constraint =
         Enum.map(versions_dependencies, fn {version, dependencies} ->
           {version, dependencies[dependency]}
@@ -66,7 +71,13 @@ defmodule Resolver.PackageLister do
       package_range = %PackageRange{name: package, constraint: Util.from_bounds(lower, upper)}
       dependency_range = %PackageRange{name: dependency, constraint: constraint}
       package_term = %Term{positive: true, package_range: package_range}
-      dependency_term = %Term{positive: false, package_range: dependency_range}
+
+      dependency_term = %Term{
+        positive: false,
+        package_range: dependency_range,
+        optional: optional
+      }
+
       Incompatibility.new([package_term, dependency_term], :dependency)
     end)
   end

@@ -3,6 +3,9 @@ defmodule Resolver.PartialSolution do
 
   require Logger
 
+  # NOTE: Unclear if we need to separate :positive and :negative,
+  #       all tests pass when they are merged into a single map
+
   defstruct assignments: [],
             decisions: %{},
             positive: %{},
@@ -20,6 +23,7 @@ defmodule Resolver.PartialSolution do
       :error ->
         case Map.fetch(solution.negative, name) do
           {:ok, negative} -> Assignment.relation(negative, term)
+          :error when term.optional -> :disjoint
           :error -> :overlapping
         end
     end
@@ -123,9 +127,8 @@ defmodule Resolver.PartialSolution do
 
     case Map.fetch(solution.positive, name) do
       {:ok, old_assignment} ->
-        positive =
-          Map.put(solution.positive, name, Assignment.intersect(old_assignment, assignment))
-
+        assignment = Assignment.intersect(old_assignment, assignment)
+        positive = Map.put(solution.positive, name, assignment)
         %{solution | positive: positive}
 
       :error ->

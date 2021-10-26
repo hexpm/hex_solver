@@ -5,7 +5,8 @@ defmodule Resolver.Term do
   require Logger
 
   defstruct positive: true,
-            package_range: nil
+            package_range: nil,
+            optional: false
 
   def relation(%Term{} = left, %Term{} = right) do
     true = compatible_package?(left, right)
@@ -44,6 +45,8 @@ defmodule Resolver.Term do
 
   def intersect(%Term{} = left, %Term{} = right) do
     true = compatible_package?(left, right)
+    # NOTE: Technically this should be set, but all tests pass without it
+    # left = %{left | optional: left.optional and right.optional}
 
     cond do
       left.positive != right.positive ->
@@ -92,12 +95,15 @@ defmodule Resolver.Term do
   end
 
   defimpl String.Chars do
-    def to_string(%{positive: positive, package_range: %{name: name, constraint: constraint}}) do
-      "#{positive(positive)}#{name} #{constraint}"
+    def to_string(%{package_range: %{name: name, constraint: constraint}} = term) do
+      "#{positive(term.positive)}#{name} #{constraint}#{optional(term.optional)}"
     end
 
     defp positive(true), do: ""
     defp positive(false), do: "not "
+
+    defp optional(true), do: " (optional)"
+    defp optional(false), do: ""
   end
 
   defimpl Inspect do

@@ -78,7 +78,7 @@ defmodule Resolver.Incompatibility do
       end
     end
 
-    defp term(term), do: "#{term.package_range.name} #{term.package_range.constraint}"
+    defp term(term), do: %{term | positive: true}
 
     defp positive(true), do: "forbidden"
     defp positive(false), do: "required"

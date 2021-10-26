@@ -36,7 +36,12 @@ defmodule Resolver.Assignment do
 
   defimpl Inspect do
     def inspect(
-          %{term: term, decision_level: decision_level, index: index, cause: cause},
+          %{
+            term: term,
+            decision_level: decision_level,
+            index: index,
+            cause: cause
+          },
           _opts
         ) do
       "#Assignment<term: #{term}#{maybe(", cause: ", cause)}, level: #{decision_level}, index: #{index}>"
