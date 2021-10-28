@@ -5,10 +5,10 @@ defmodule ResolverTest do
   alias Resolver.Constraints.Range
   alias Resolver.Registry.Process, as: Registry
 
-  defp run(locked \\ %{}) do
+  defp run(locked \\ %{}, overrides \\ []) do
     locked = Map.new(locked, fn {package, version} -> {package, Version.parse!(version)} end)
 
-    case Resolver.run(Registry, locked) do
+    case Resolver.run(Registry, locked, MapSet.new(overrides)) do
       {:ok, decisions} ->
         result =
           Map.new(decisions, fn {package, version} ->
@@ -202,6 +202,26 @@ defmodule ResolverTest do
       Registry.put("opt", "1.0.0", [])
 
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0", "opt" => "1.0.0"}
+    end
+  end
+
+  describe "run/0 overrides" do
+    test "ignores incompatible constraint" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "2.0.0"}])
+      Registry.put("bar", "1.0.0", [])
+      Registry.put("bar", "2.0.0", [])
+
+      assert run(%{}, ["bar"]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
+    test "ignores compatible constraint" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "~> 1.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "~> 1.0.0"}])
+      Registry.put("bar", "1.0.0", [])
+      Registry.put("bar", "1.1.0", [])
+
+      assert run(%{}, ["bar"]) == %{"foo" => "1.0.0", "bar" => "1.1.0"}
     end
   end
 end

@@ -4,7 +4,7 @@ defmodule Resolver.PackageLister do
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
-  def minimal_versions(registry, locked, package_ranges) do
+  def pick_package(registry, locked, package_ranges) do
     package_range_versions =
       Enum.map(package_ranges, fn package_range ->
         name = String.trim_trailing(package_range.name, "$optional")
@@ -12,7 +12,8 @@ defmodule Resolver.PackageLister do
         case registry.versions(name) do
           {:ok, versions} ->
             # TODO: This wont give a good error message when the lock file
-            #       prevents a solution
+            #       prevents a solution. Can we treat locked as optional instead
+            #       from a "$lock" package instead?
             case Map.fetch(locked, name) do
               {:ok, version} ->
                 allowed =
@@ -44,7 +45,7 @@ defmodule Resolver.PackageLister do
   # NOTE: Much of this can be cached
   # TODO: Don't return incompatibilities we already returned
   #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
-  def dependencies_as_incompatibilities(registry, package, version) do
+  def dependencies_as_incompatibilities(registry, overrides, package, version) do
     package = String.trim_trailing(package, "$optional")
     {:ok, versions} = registry.versions(package)
 
@@ -54,7 +55,9 @@ defmodule Resolver.PackageLister do
         {version, Map.new(dependencies)}
       end)
 
-    Enum.map(versions_dependencies[version], fn {dependency, {constraint, optional}} ->
+    versions_dependencies[version]
+    |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
+    |> Enum.map(fn {dependency, {constraint, optional}} ->
       versions_constraint =
         Enum.map(versions_dependencies, fn {version, dependencies} ->
           {version, dependencies[dependency]}

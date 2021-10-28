@@ -12,8 +12,8 @@ defmodule Resolver do
 
   require Logger
 
-  def run(registry, locked) do
-    solve("$root", new_state(registry, locked))
+  def run(registry, locked, overrides) do
+    solve("$root", new_state(registry, locked, overrides))
   end
 
   defp solve(next, state) do
@@ -109,7 +109,7 @@ defmodule Resolver do
     if unsatisfied == [] do
       :done
     else
-      case PackageLister.minimal_versions(state.registry, state.locked, unsatisfied) do
+      case PackageLister.pick_package(state.registry, state.locked, unsatisfied) do
         {:ok, package_range, versions} ->
           if versions == [] do
             # TODO: Detect if the constraint excludes a single version, then it is
@@ -129,6 +129,7 @@ defmodule Resolver do
             incompatibilities =
               PackageLister.dependencies_as_incompatibilities(
                 state.registry,
+                state.overrides,
                 package_range.name,
                 version
               )
@@ -343,7 +344,7 @@ defmodule Resolver do
     end
   end
 
-  defp new_state(registry, locked) do
+  defp new_state(registry, locked, overrides) do
     version = Version.parse!("1.0.0")
     package_range = %PackageRange{name: "$root", constraint: version}
     root = Incompatibility.new([%Term{positive: false, package_range: package_range}], :root)
@@ -352,7 +353,8 @@ defmodule Resolver do
       solution: %PartialSolution{},
       incompatibilities: %{},
       registry: registry,
-      locked: locked
+      locked: locked,
+      overrides: overrides
     }
     |> add_incompatibility(root)
   end
