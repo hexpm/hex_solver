@@ -58,7 +58,7 @@ defmodule Resolver.PackageLister do
     versions_dependencies[version]
     |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
     |> Enum.map(fn {dependency, {constraint, optional}} ->
-      versions_constraint =
+      versions_constraints =
         Enum.map(versions_dependencies, fn {version, dependencies} ->
           {version, dependencies[dependency]}
         end)
@@ -67,9 +67,10 @@ defmodule Resolver.PackageLister do
       # constraint is the same to create an incompatibility based on a
       # larger set of versions for the parent package.
       # This optimization let us skip many versions during conflict resolution.
-      # TODO: Remove bounds if there are none
-      lower = next_bound(Enum.reverse(versions_constraint), version, constraint)
-      upper = next_bound(versions_constraint, version, constraint)
+      lower = next_bound(Enum.reverse(versions_constraints), version, constraint)
+      upper = next_bound(versions_constraints, version, constraint)
+      lower = if lower == Enum.at(versions, 0), do: nil, else: lower
+      upper = if upper == Enum.at(versions, -1), do: nil, else: upper
 
       package_range = %PackageRange{name: package, constraint: Util.from_bounds(lower, upper)}
       dependency_range = %PackageRange{name: dependency, constraint: constraint}

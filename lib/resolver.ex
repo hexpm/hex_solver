@@ -266,15 +266,15 @@ defmodule Resolver do
             difference =
               Assignment.difference(resolution.most_recent_satisfier, resolution.most_recent_term)
 
-            if difference == nil do
-              resolution
-            else
+            if difference do
               satisfier = PartialSolution.satisfier(state.solution, Term.inverse(difference.term))
 
               previous_satisfier_level =
                 max(resolution.previous_satisfier_level, satisfier.decision_level)
 
               %{resolution | previous_satisfier_level: previous_satisfier_level}
+            else
+              resolution
             end
           else
             resolution

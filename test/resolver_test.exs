@@ -22,7 +22,7 @@ defmodule ResolverTest do
         assert [term] = incompatibility.terms
         assert term.positive
         assert term.package_range.name == "$root"
-        assert term.package_range.constraint == Version.parse!("1.0.0")
+        assert term.package_range.constraint == %Range{}
 
         incompatibility.cause
     end

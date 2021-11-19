@@ -1,6 +1,6 @@
 defmodule Resolver.Term do
   alias Resolver.{Constraint, PackageRange, Term}
-  alias Resolver.Constraints.Empty
+  alias Resolver.Constraints.{Empty, Range}
 
   require Logger
 
@@ -94,16 +94,21 @@ defmodule Resolver.Term do
     }
   end
 
+  def to_string(%Term{package_range: %{name: name, constraint: constraint}} = term) do
+    "#{positive(term.positive)}#{name}#{constraint_string(constraint)}#{optional(term.optional)}"
+  end
+
+  defp positive(true), do: ""
+  defp positive(false), do: "not "
+
+  defp constraint_string(%Range{min: nil, max: nil}), do: ""
+  defp constraint_string(constraint), do: " #{constraint}"
+
+  defp optional(true), do: " (optional)"
+  defp optional(false), do: ""
+
   defimpl String.Chars do
-    def to_string(%{package_range: %{name: name, constraint: constraint}} = term) do
-      "#{positive(term.positive)}#{name} #{constraint}#{optional(term.optional)}"
-    end
-
-    defp positive(true), do: ""
-    defp positive(false), do: "not "
-
-    defp optional(true), do: " (optional)"
-    defp optional(false), do: ""
+    defdelegate to_string(term), to: Resolver.Term
   end
 
   defimpl Inspect do

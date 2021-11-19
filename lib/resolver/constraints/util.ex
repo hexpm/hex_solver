@@ -68,4 +68,8 @@ defmodule Resolver.Constraints.Util do
       :lt -> %Range{min: lower, max: upper, include_min: true, include_max: true}
     end
   end
+
+  def from_bounds(%Elixir.Version{} = lower, nil), do: %Range{min: lower, include_min: true}
+  def from_bounds(nil, %Elixir.Version{} = upper), do: %Range{max: upper, include_max: true}
+  def from_bounds(nil, nil), do: %Range{}
 end
