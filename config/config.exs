@@ -7,4 +7,6 @@ config :logger,
 
 config :logger, :console, format: "[$level] $levelpad$message\n"
 
-import_config "#{config_env()}.exs"
+if config_env() == :test do
+  config :stream_data, max_runs: 1000
+end
