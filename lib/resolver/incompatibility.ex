@@ -47,22 +47,22 @@ defmodule Resolver.Incompatibility do
 
   def to_string(%Incompatibility{cause: :dependency, terms: terms}) do
     [%Term{positive: true} = depender, %Term{positive: false} = dependee] = terms
-    "#{terse(depender, true)} depends on #{terse(dependee)}"
+    "#{terse_every(depender)} depends on #{term_abs(dependee)}"
   end
 
   def to_string(%Incompatibility{cause: :no_versions, terms: terms}) do
     [%Term{positive: true} = term] = terms
-    "no versions of #{terse(term)} match #{term.package_range.constraint}"
+    "no versions of #{package_name(term)} match #{term.package_range.constraint}"
   end
 
   def to_string(%Incompatibility{cause: :package_not_found, terms: terms}) do
     [%Term{positive: true} = term] = terms
-    "#{terse(term)} doesn't exist"
+    "#{package_name(term)} doesn't exist"
   end
 
   def to_string(%Incompatibility{cause: :root, terms: terms}) do
     [%Term{positive: false} = term] = terms
-    "#{term.package_range.name} is #{term.package_range.constraint}"
+    "#{package_name(term)} is #{term.package_range.constraint}"
   end
 
   def to_string(%Incompatibility{terms: []}) do
@@ -81,20 +81,20 @@ defmodule Resolver.Incompatibility do
           } = term
         ]
       }) do
-    "no version of #{term} is allowed"
+    "no version of #{package_name(term)} is allowed"
   end
 
   def to_string(%Incompatibility{terms: [%Term{positive: true} = term]}) do
-    "#{term} is forbidden"
+    "#{terse_name(term)} is forbidden"
   end
 
   def to_string(%Incompatibility{terms: [%Term{positive: false} = term]}) do
-    "#{term_abs(term)} is required"
+    "#{terse_name(term_abs(term))} is required"
   end
 
   def to_string(%Incompatibility{terms: [left, right]}) when left.positive == right.positive do
     if left.positive do
-      "#{term_abs(left)} is incompatible with #{term_abs(right)}"
+      "#{terse_name(term_abs(left))} is incompatible with #{terse_name(term_abs(right))}"
     else
       "either #{term_abs(left)} or #{term_abs(right)}"
     end
@@ -165,17 +165,17 @@ defmodule Resolver.Incompatibility do
     left_negatives =
       left.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &terse/1)
+      |> Enum.map_join(" or ", &term_abs/1)
 
     right_negatives =
       right.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &terse/1)
+      |> Enum.map_join(" or ", &term_abs/1)
 
     dependency? = left.cause == :dependency and right.cause == :dependency
 
     [
-      terse(left_positive, _allow_every? = true),
+      terse_every(left_positive),
       " ",
       cause_verb(dependency?),
       " both ",
@@ -223,15 +223,15 @@ defmodule Resolver.Incompatibility do
 
     buffer =
       if length(prior_positives) > 1 do
-        prior_string = Enum.map_join(prior_positives, " or ", &terse/1)
+        prior_string = Enum.map_join(prior_positives, " or ", &term_abs/1)
         "if #{prior_string} then "
       else
-        "#{terse(List.first(prior_positives), _allow_every? = true)} #{cause_verb(prior)} "
+        "#{terse_every(List.first(prior_positives))} #{cause_verb(prior)} "
       end
 
     buffer = [
       buffer,
-      terse(prior_negative),
+      term_abs(prior_negative),
       maybe_line(prior_line),
       " which ",
       cause_verb(latter)
@@ -240,7 +240,7 @@ defmodule Resolver.Incompatibility do
     latter_string =
       latter.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &terse/1)
+      |> Enum.map_join(" or ", &term_abs/1)
 
     [buffer, " ", latter_string, maybe_line(latter_line)]
   catch
@@ -274,13 +274,13 @@ defmodule Resolver.Incompatibility do
     buffer =
       case positives do
         [positive] ->
-          [terse(positive, _allow_every? = true), " ", cause_verb(prior), " "]
+          [terse_every(positive), " ", cause_verb(prior), " "]
 
         _ ->
-          ["if ", Enum.map_join(positives, " or ", &terse/1), " then "]
+          ["if ", Enum.map_join(positives, " or ", &term_abs/1), " then "]
       end
 
-    buffer = [buffer, terse(List.first(latter.terms)), maybe_line(prior_line), " "]
+    buffer = [buffer, term_abs(List.first(latter.terms)), maybe_line(prior_line), " "]
 
     buffer =
       case latter.cause do
@@ -296,13 +296,13 @@ defmodule Resolver.Incompatibility do
 
   defp cause_verb(true), do: "depends on"
   defp cause_verb(false), do: "requires"
-  defp cause_verb(%{cause: :dependency}), do: "depends on"
-  defp cause_verb(%{cause: _}), do: "requires"
+  defp cause_verb(%Incompatibility{cause: :dependency}), do: "depends on"
+  defp cause_verb(%Incompatibility{cause: _}), do: "requires"
 
   defp maybe_line(nil), do: ""
   defp maybe_line(line), do: " (#{line})"
 
-  defp single_term(%{terms: terms}, fun) do
+  defp single_term(%Incompatibility{terms: terms}, fun) do
     Enum.reduce_while(terms, nil, fn term, found ->
       if fun.(term) do
         if found do
@@ -316,21 +316,28 @@ defmodule Resolver.Incompatibility do
     end)
   end
 
-  defp terse(term, allow_every? \\ false)
+  defp package_name(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
+  defp package_name(%Term{package_range: %PackageRange{name: name}}), do: name
 
-  defp terse(%{package_range: %{name: "$root"}}, _allow_every?) do
-    "myapp"
-  end
-
-  defp terse(term, allow_every?) do
-    if allow_every? and Constraint.any?(term.package_range.constraint) do
-      "every version of #{term.package_range.name}"
+  defp terse_name(term) do
+    if Constraint.any?(term.package_range.constraint) do
+      package_name(term)
     else
-      Kernel.to_string(term.package_range)
+      PackageRange.to_string(term.package_range)
     end
   end
 
-  defp term_abs(term), do: %{term | positive: true}
+  defp terse_every(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
+
+  defp terse_every(term) do
+    if Constraint.any?(term.package_range.constraint) do
+      "every version of #{package_name(term)}"
+    else
+      PackageRange.to_string(term.package_range)
+    end
+  end
+
+  defp term_abs(term), do: Term.to_string(%Term{term | positive: true})
 
   defimpl String.Chars do
     defdelegate to_string(incompatibility), to: Resolver.Incompatibility
