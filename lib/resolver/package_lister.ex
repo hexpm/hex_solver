@@ -66,16 +66,9 @@ defmodule Resolver.PackageLister do
       # constraint is the same to create an incompatibility based on a
       # larger set of versions for the parent package.
       # This optimization let us skip many versions during conflict resolution.
-      lower =
-        next_bound(
-          Enum.reverse(version_constraints),
-          version,
-          {constraint, optional},
-          _skip? = false
-        )
+      lower = lower_bound(Enum.reverse(version_constraints), version, {constraint, optional})
+      upper = upper_bound(version_constraints, version, {constraint, optional})
 
-      upper = next_bound(version_constraints, version, {constraint, optional}, _skip? = true)
-      lower = if lower == List.first(versions), do: nil, else: lower
       range = %Range{min: lower, max: upper, include_min: !!lower}
       package_range = %PackageRange{name: package, constraint: range}
       dependency_range = %PackageRange{name: dependency, constraint: constraint}
@@ -88,13 +81,19 @@ defmodule Resolver.PackageLister do
       }
 
       Incompatibility.new([package_term, dependency_term], :dependency)
+      # |> IO.inspect()
     end)
   end
 
-  def next_bound(versions_dependencies, version, constraint, next?) do
-    versions_dependencies
-    |> skip_to_version(version)
-    |> skip_to_constraint(constraint, next?)
+  def lower_bound(versions_dependencies, version, constraint) do
+    [{version, _} | versions_dependencies] = skip_to_version(versions_dependencies, version)
+
+    skip_to_last_constraint(versions_dependencies, constraint, version)
+  end
+
+  def upper_bound(versions_dependencies, version, constraint) do
+    versions_dependencies = skip_to_version(versions_dependencies, version)
+    skip_to_after_constraint(versions_dependencies, constraint)
   end
 
   defp skip_to_version([{version, _constraint} | _] = versions_dependencies, version) do
@@ -105,27 +104,30 @@ defmodule Resolver.PackageLister do
     skip_to_version(versions_dependencies, version)
   end
 
-  defp skip_to_constraint(
-         [{_version, constraint} | {version, _constraint}],
-         constraint,
-         _skip? = true
-       ) do
-    version
+  defp skip_to_last_constraint([{version, constraint} | versions_dependencies], constraint, _last) do
+    skip_to_last_constraint(versions_dependencies, constraint, version)
   end
 
-  defp skip_to_constraint([{_version, constraint}], constraint, _skip? = true) do
+  defp skip_to_last_constraint([], _constraint, _last) do
     nil
   end
 
-  defp skip_to_constraint([{version, _version_constraint}], _constraint, _skip? = true) do
+  defp skip_to_last_constraint(_versions_dependencies, _constraint, last) do
+    last
+  end
+
+  defp skip_to_after_constraint(
+         [{_, constraint}, {version, constraint} | versions_dependencies],
+         constraint
+       ) do
+    skip_to_after_constraint([{version, constraint} | versions_dependencies], constraint)
+  end
+
+  defp skip_to_after_constraint([_, {version, _} | _versions_dependencies], _) do
     version
   end
 
-  defp skip_to_constraint([{version, constraint} | _], constraint, _skip? = false) do
-    version
-  end
-
-  defp skip_to_constraint([_ | versions_dependencies], constraint, skip?) do
-    skip_to_constraint(versions_dependencies, constraint, skip?)
+  defp skip_to_after_constraint(_, _constraint) do
+    nil
   end
 end
