@@ -1,6 +1,7 @@
 defmodule Resolver.Incompatibility do
   import Kernel, except: [to_string: 1]
   alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
+  alias Resolver.Constraints.Range
 
   defstruct terms: [], cause: nil
 
@@ -72,8 +73,23 @@ defmodule Resolver.Incompatibility do
     "version solving failed"
   end
 
-  def to_string(%Incompatibility{terms: [term]}) do
-    "#{term_abs(term)} is #{positive_phrase(term.positive)}"
+  def to_string(%Incompatibility{
+        terms: [
+          %Term{
+            positive: true,
+            package_range: %PackageRange{constraint: %Range{min: nil, max: nil}}
+          } = term
+        ]
+      }) do
+    "no version of #{term} is allowed"
+  end
+
+  def to_string(%Incompatibility{terms: [%Term{positive: true} = term]}) do
+    "#{term} is forbidden"
+  end
+
+  def to_string(%Incompatibility{terms: [%Term{positive: false} = term]}) do
+    "#{term_abs(term)} is required"
   end
 
   def to_string(%Incompatibility{terms: [left, right]}) when left.positive == right.positive do
@@ -315,9 +331,6 @@ defmodule Resolver.Incompatibility do
   end
 
   defp term_abs(term), do: %{term | positive: true}
-
-  defp positive_phrase(true), do: "forbidden"
-  defp positive_phrase(false), do: "required"
 
   defimpl String.Chars do
     defdelegate to_string(incompatibility), to: Resolver.Incompatibility

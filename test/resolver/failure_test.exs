@@ -31,7 +31,7 @@ defmodule Resolver.FailureTest do
     Registry.put("bar", "2.0.0", [])
 
     assert run() == """
-           Because every version of foo depends on bar ~> 2.0 and myapp depends on bar ~> 1.0, foo is forbidden.
+           Because every version of foo depends on bar ~> 2.0 and myapp depends on bar ~> 1.0, no version of foo is allowed.
            So, because myapp depends on foo 1.0.0, version solving failed.\
            """
   end
@@ -42,7 +42,7 @@ defmodule Resolver.FailureTest do
     Registry.put("bar", "1.0.0", [])
 
     assert run() == """
-           Because every version of foo depends on bar ~> 2.0 which doesn't match any versions, foo is forbidden.
+           Because every version of foo depends on bar ~> 2.0 which doesn't match any versions, no version of foo is allowed.
            So, because myapp depends on foo 1.0.0, version solving failed.\
            """
   end
@@ -56,7 +56,7 @@ defmodule Resolver.FailureTest do
 
     assert run() == """
            Because every version of foo depends on bar ~> 2.0 which depends on baz ~> 3.0, foo requires baz ~> 3.0.
-           And because myapp depends on baz ~> 1.0, foo is forbidden.
+           And because myapp depends on baz ~> 1.0, no version of foo is allowed.
            So, because myapp depends on foo ~> 1.0, version solving failed.\
            """
   end
@@ -78,7 +78,7 @@ defmodule Resolver.FailureTest do
 
                Because foo >= 1.1.0 depends on x ~> 1.0 which depends on y ~> 2.0, foo >= 1.1.0 requires y ~> 2.0.
                And because foo >= 1.1.0 depends on y ~> 1.0, foo >= 1.1.0 is forbidden.
-               And because foo < 1.1.0 is forbidden (1), foo is forbidden.
+               And because foo < 1.1.0 is forbidden (1), no version of foo is allowed.
                So, because myapp depends on foo ~> 1.0, version solving failed.\
            """
   end
