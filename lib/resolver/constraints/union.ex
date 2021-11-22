@@ -117,7 +117,7 @@ defmodule Resolver.Constraints.Union do
   defp do_intersect([left | lefts], [right | rights], acc) do
     acc =
       case Constraint.intersect(left, right) do
-        %Empty{} -> []
+        %Empty{} -> acc
         intersection -> [intersection | acc]
       end
 
