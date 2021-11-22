@@ -128,8 +128,8 @@ defmodule Resolver.Constraints.Union do
     end
   end
 
-  defp do_intersect(_lefts, [], acc), do: Util.from_list(acc)
-  defp do_intersect([], _rights, acc), do: Util.from_list(acc)
+  defp do_intersect(_lefts, [], acc), do: Util.from_list(Enum.reverse(acc))
+  defp do_intersect([], _rights, acc), do: Util.from_list(Enum.reverse(acc))
 
   def union(%Union{} = left, right) do
     Util.union([left, right])
