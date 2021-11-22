@@ -31,18 +31,21 @@ defmodule ResolverTest do
   describe "run/0 success" do
     test "only root" do
       Registry.put("$root", "1.0.0", [])
+
       assert run() == %{}
     end
 
     test "single fixed dep" do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
       Registry.put("foo", "1.0.0", [])
+
       assert run() == %{"foo" => "1.0.0"}
     end
 
     test "single loose dep" do
       Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
       Registry.put("foo", "1.1.0", [])
+
       assert run() == %{"foo" => "1.1.0"}
     end
 
@@ -50,6 +53,7 @@ defmodule ResolverTest do
       Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
       Registry.put("foo", "1.1.0", [])
       Registry.put("foo", "1.0.0", [])
+
       assert run() == %{"foo" => "1.1.0"}
     end
 
@@ -57,6 +61,7 @@ defmodule ResolverTest do
       Registry.put("$root", "1.0.0", [{"foo", "~> 1.0.0"}])
       Registry.put("foo", "1.1.0", [])
       Registry.put("foo", "1.0.0", [])
+
       assert run() == %{"foo" => "1.0.0"}
     end
 
@@ -65,6 +70,7 @@ defmodule ResolverTest do
       Registry.put("foo", "1.1.0", [])
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
       Registry.put("bar", "1.0.0", [])
+
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
@@ -72,6 +78,7 @@ defmodule ResolverTest do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "2.0.0"}])
       Registry.put("foo", "1.0.0", [])
       Registry.put("bar", "2.0.0", [])
+
       assert run() == %{"foo" => "1.0.0", "bar" => "2.0.0"}
     end
 
@@ -79,6 +86,7 @@ defmodule ResolverTest do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
       Registry.put("bar", "1.0.0", [])
+
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
@@ -90,7 +98,16 @@ defmodule ResolverTest do
       Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}])
       Registry.put("baz", "1.1.0", [])
       Registry.put("baz", "1.0.0", [])
+
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
+    end
+
+    test "loop" do
+      Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])
+
+      assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
   end
 

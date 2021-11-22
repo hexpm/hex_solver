@@ -152,7 +152,8 @@ defmodule Resolver.PartialSolution do
 
   def unsatisfied(%PartialSolution{} = solution) do
     solution.positive
-    |> Enum.reject(fn {package, _assignment} -> Map.has_key?(solution.decisions, package) end)
-    |> Enum.map(fn {_package, assignment} -> assignment.term.package_range end)
+    |> Map.values()
+    |> Enum.reject(&Map.has_key?(solution.decisions, &1.term.package_range.name))
+    |> Enum.map(& &1.term.package_range)
   end
 end

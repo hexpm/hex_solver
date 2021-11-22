@@ -1,5 +1,6 @@
 defmodule Resolver.Incompatibility do
-  alias Resolver.{Incompatibility, PackageRange, Term}
+  import Kernel, except: [to_string: 1]
+  alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
 
   defstruct terms: [], cause: nil
 
@@ -43,45 +44,283 @@ defmodule Resolver.Incompatibility do
 
   def failure?(%Incompatibility{}), do: false
 
-  defimpl String.Chars do
-    # TODO: Use cause to improve this
-    def to_string(%{terms: [term]}) do
-      "#{term(term)} is #{positive(term.positive)}"
+  def to_string(%Incompatibility{cause: :dependency, terms: terms}) do
+    [%Term{positive: true} = depender, %Term{positive: false} = dependee] = terms
+    "#{terse(depender, true)} depends on #{terse(dependee)}"
+  end
+
+  def to_string(%Incompatibility{cause: :no_versions, terms: terms}) do
+    [%Term{positive: true} = term] = terms
+    "no versions of #{terse(term)} match #{term.package_range.constraint}"
+  end
+
+  def to_string(%Incompatibility{cause: :package_not_found, terms: terms}) do
+    [%Term{positive: true} = term] = terms
+    "#{terse(term)} doesn't exist"
+  end
+
+  def to_string(%Incompatibility{cause: :root, terms: terms}) do
+    [%Term{positive: false} = term] = terms
+    "#{term.package_range.name} is #{term.package_range.constraint}"
+  end
+
+  def to_string(%Incompatibility{terms: []}) do
+    "version solving failed"
+  end
+
+  def to_string(%Incompatibility{terms: [%Term{package_range: %PackageRange{name: "$root"}}]}) do
+    "version solving failed"
+  end
+
+  def to_string(%Incompatibility{terms: [term]}) do
+    "#{term_abs(term)} is #{positive_phrase(term.positive)}"
+  end
+
+  def to_string(%Incompatibility{terms: [left, right]}) when left.positive == right.positive do
+    if left.positive do
+      "#{term_abs(left)} is incompatible with #{term_abs(right)}"
+    else
+      "either #{term_abs(left)} or #{term_abs(right)}"
+    end
+  end
+
+  def to_string(%Incompatibility{terms: terms}) do
+    {positive, negative} = Enum.split_with(terms, & &1.positive)
+
+    cond do
+      positive != [] and negative != [] ->
+        case positive do
+          [term] ->
+            "#{term_abs(term)} requires #{Enum.map_join(negative, " or ", &term_abs/1)}"
+
+          _ ->
+            "if #{Enum.map_join(positive, " and ", &term_abs/1)} then #{Enum.map_join(negative, " or ", &term_abs/1)}"
+        end
+
+      positive != [] ->
+        "one of #{Enum.map_join(positive, " or ", &term_abs/1)} must be false"
+
+      negative != [] ->
+        "one of #{Enum.map_join(negative, " or ", &term_abs/1)} must be true"
+    end
+  end
+
+  def to_string_and(
+        %Incompatibility{} = left,
+        %Incompatibility{} = right,
+        left_line \\ nil,
+        right_line \\ nil
+      ) do
+    cond do
+      requires_both = try_requires_both(left, right, left_line, right_line) ->
+        requires_both
+
+      requires_through = try_requires_through(left, right, left_line, right_line) ->
+        requires_through
+
+      requires_forbidden = try_requires_forbidden(left, right, left_line, right_line) ->
+        requires_forbidden
+
+      true ->
+        [
+          to_string(left),
+          maybe_line(left_line),
+          " and ",
+          to_string(right),
+          maybe_line(right_line)
+        ]
+    end
+    |> IO.chardata_to_string()
+  end
+
+  defp try_requires_both(left, right, left_line, right_line) do
+    if length(left.terms) == 1 or length(right.terms) == 1 do
+      throw({__MODULE__, :try_requires_both})
     end
 
-    def to_string(%{terms: [left, right]}) when left.positive == right.positive do
-      if left.positive do
-        "#{term(left)} is incompatible with #{term(right)}"
-      else
-        "either #{term(left)} or #{term(right)}"
-      end
+    left_positive = single_term(left, & &1.positive)
+    right_positive = single_term(right, & &1.positive)
+
+    if !left_positive || !right_positive ||
+         left_positive.package_range != right_positive.package_range do
+      throw({__MODULE__, :try_requires_both})
     end
 
-    def to_string(%{terms: terms}) do
-      {positive, negative} = Enum.split_with(terms, & &1.positive)
+    left_negatives =
+      left.terms
+      |> Enum.reject(& &1.positive)
+      |> Enum.map_join(" or ", &terse/1)
 
+    right_negatives =
+      right.terms
+      |> Enum.reject(& &1.positive)
+      |> Enum.map_join(" or ", &terse/1)
+
+    dependency? = left.cause == :dependency and right.cause == :dependency
+
+    [
+      terse(left_positive, _allow_every? = true),
+      " ",
+      cause_verb(dependency?),
+      " both ",
+      left_negatives,
+      maybe_line(left_line),
+      " and ",
+      right_negatives,
+      maybe_line(right_line)
+    ]
+  catch
+    {__MODULE__, :try_requires_both} -> nil
+  end
+
+  defp try_requires_through(right, left, left_line, right_line) do
+    if length(left.terms) == 1 or length(right.terms) == 1 do
+      throw({__MODULE__, :try_requires_through})
+    end
+
+    left_negative = single_term(left, &(not &1.positive))
+    right_negative = single_term(right, &(not &1.positive))
+    left_positive = single_term(left, & &1.positive)
+    right_positive = single_term(right, & &1.positive)
+
+    if !left_negative && !right_negative do
+      throw({__MODULE__, :try_requires_through})
+    end
+
+    {prior, prior_negative, prior_line, latter, latter_line} =
       cond do
-        positive != [] and negative != [] ->
-          case positive do
-            [term] ->
-              "#{term(term)} requires #{Enum.map_join(negative, " or ", &term/1)}"
+        left_negative && right_positive &&
+          left_negative.package_range.name == right_positive.package_range.name &&
+            Term.satisfies?(Term.inverse(left_negative), right_positive) ->
+          {left, left_negative, left_line, right, right_line}
 
-            _ ->
-              "if #{Enum.map_join(positive, " and ", &term/1)} then #{Enum.map_join(negative, " or ", &term/1)}"
-          end
+        right_negative && left_positive &&
+          right_negative.package_range.name == left_positive.package_range.name &&
+            Term.satisfies?(Term.inverse(right_negative), left_positive) ->
+          {right, right_negative, right_line, left, left_line}
 
-        positive != [] ->
-          "one of #{Enum.map_join(positive, " or ", &term/1)} must be false"
-
-        negative != [] ->
-          "one of #{Enum.map_join(negative, " or ", &term/1)} must be true"
+        true ->
+          throw({__MODULE__, :try_requires_through})
       end
+
+    prior_positives = Enum.filter(prior.terms, & &1.positive)
+
+    buffer =
+      if length(prior_positives) > 1 do
+        prior_string = Enum.map_join(prior_positives, " or ", &terse/1)
+        "if #{prior_string} then "
+      else
+        "#{terse(List.first(prior_positives), _allow_every? = true)} #{cause_verb(prior)} "
+      end
+
+    buffer = [
+      buffer,
+      terse(prior_negative),
+      maybe_line(prior_line),
+      " which ",
+      cause_verb(latter)
+    ]
+
+    latter_string =
+      latter.terms
+      |> Enum.reject(& &1.positive)
+      |> Enum.map_join(" or ", &terse/1)
+
+    [buffer, " ", latter_string, maybe_line(latter_line)]
+  catch
+    {__MODULE__, :try_requires_through} -> nil
+  end
+
+  defp try_requires_forbidden(left, right, left_line, right_line) do
+    if length(left.terms) != 1 and length(right.terms) != 1 do
+      throw({__MODULE__, :try_requires_forbidden})
     end
 
-    defp term(term), do: %{term | positive: true}
+    {prior, prior_line, latter, latter_line} =
+      if length(left.terms) == 1 do
+        {right, right_line, left, left_line}
+      else
+        {left, left_line, right, right_line}
+      end
 
-    defp positive(true), do: "forbidden"
-    defp positive(false), do: "required"
+    negative = single_term(prior, &(not &1.positive))
+
+    unless negative do
+      throw({__MODULE__, :try_requires_forbidden})
+    end
+
+    unless Term.satisfies?(Term.inverse(negative), List.first(latter.terms)) do
+      throw({__MODULE__, :try_requires_forbidden})
+    end
+
+    positives = Enum.filter(prior.terms, & &1.positive)
+
+    buffer =
+      case positives do
+        [positive] ->
+          [terse(positive, _allow_every? = true), " ", cause_verb(prior), " "]
+
+        _ ->
+          ["if ", Enum.map_join(positives, " or ", &terse/1), " then "]
+      end
+
+    buffer = [buffer, terse(List.first(latter.terms)), maybe_line(prior_line), " "]
+
+    buffer =
+      case latter.cause do
+        :no_versions -> [buffer, "which doesn't match any versions"]
+        :package_not_found -> [buffer, "which doesn't exist"]
+        _ -> [buffer, "which is forbidden"]
+      end
+
+    [buffer, maybe_line(latter_line)]
+  catch
+    {__MODULE__, :try_requires_forbidden} -> nil
+  end
+
+  defp cause_verb(true), do: "depends on"
+  defp cause_verb(false), do: "requires"
+  defp cause_verb(%{cause: :dependency}), do: "depends on"
+  defp cause_verb(%{cause: _}), do: "requires"
+
+  defp maybe_line(nil), do: ""
+  defp maybe_line(line), do: " (#{line})"
+
+  defp single_term(%{terms: terms}, fun) do
+    Enum.reduce_while(terms, nil, fn term, found ->
+      if fun.(term) do
+        if found do
+          {:halt, nil}
+        else
+          {:cont, term}
+        end
+      else
+        {:cont, found}
+      end
+    end)
+  end
+
+  defp terse(term, allow_every? \\ false)
+
+  defp terse(%{package_range: %{name: "$root"}}, _allow_every?) do
+    "myapp"
+  end
+
+  defp terse(term, allow_every?) do
+    if allow_every? and Constraint.any?(term.package_range.constraint) do
+      "every version of #{term.package_range.name}"
+    else
+      Kernel.to_string(term.package_range)
+    end
+  end
+
+  defp term_abs(term), do: %{term | positive: true}
+
+  defp positive_phrase(true), do: "forbidden"
+  defp positive_phrase(false), do: "required"
+
+  defimpl String.Chars do
+    defdelegate to_string(incompatibility), to: Resolver.Incompatibility
   end
 
   defimpl Inspect do

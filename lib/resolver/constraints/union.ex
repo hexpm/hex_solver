@@ -144,10 +144,12 @@ defmodule Resolver.Constraints.Union do
   defp to_ranges(%Range{} = range), do: [range]
   defp to_ranges(%Union{ranges: ranges}), do: Enum.map(ranges, &Version.to_range/1)
 
+  def to_string(%Union{ranges: ranges}) do
+    Enum.map_join(ranges, " or ", &Kernel.to_string/1)
+  end
+
   defimpl String.Chars do
-    def to_string(%{ranges: ranges}) do
-      Enum.map_join(ranges, " or ", &Kernel.to_string/1)
-    end
+    defdelegate to_string(union), to: Resolver.Constraints.Union
   end
 
   defimpl Inspect do

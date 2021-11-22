@@ -1,6 +1,6 @@
 defmodule Resolver.Term do
   alias Resolver.{Constraint, PackageRange, Term}
-  alias Resolver.Constraints.{Empty, Range}
+  alias Resolver.Constraints.Empty
 
   require Logger
 
@@ -22,20 +22,20 @@ defmodule Resolver.Term do
           true -> :overlapping
         end
 
-      right.positive ->
+      right.positive and not left.positive ->
         cond do
           Constraint.allows_all?(left_constraint, right_constraint) -> :disjoint
           true -> :overlapping
         end
 
-      left.positive ->
+      not right.positive and left.positive ->
         cond do
           not Constraint.allows_any?(right_constraint, left_constraint) -> :subset
           Constraint.allows_all?(right_constraint, left_constraint) -> :disjoint
           true -> :overlapping
         end
 
-      true ->
+      not right.positive and not left.positive ->
         cond do
           Constraint.allows_all?(left_constraint, right_constraint) -> :subset
           true -> :overlapping
@@ -62,8 +62,12 @@ defmodule Resolver.Term do
 
       true ->
         constraint = Constraint.union(constraint(left), constraint(right))
-        non_empty_term(left, constraint, true)
+        non_empty_term(left, constraint, false)
     end
+  end
+
+  def difference(%Term{} = left, %Term{} = right) do
+    intersect(left, inverse(right))
   end
 
   def satisfies?(%Term{} = left, %Term{} = right) do
@@ -83,7 +87,6 @@ defmodule Resolver.Term do
   end
 
   defp non_empty_term(_term, %Empty{}, _positive) do
-    # raise "oops"
     nil
   end
 
@@ -94,15 +97,12 @@ defmodule Resolver.Term do
     }
   end
 
-  def to_string(%Term{package_range: %{name: name, constraint: constraint}} = term) do
-    "#{positive(term.positive)}#{name}#{constraint_string(constraint)}#{optional(term.optional)}"
+  def to_string(%Term{package_range: package_range, positive: positive, optional: optional}) do
+    "#{positive(positive)}#{package_range}#{optional(optional)}"
   end
 
   defp positive(true), do: ""
   defp positive(false), do: "not "
-
-  defp constraint_string(%Range{min: nil, max: nil}), do: ""
-  defp constraint_string(constraint), do: " #{constraint}"
 
   defp optional(true), do: " (optional)"
   defp optional(false), do: ""

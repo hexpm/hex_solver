@@ -32,10 +32,12 @@ defmodule Resolver.Constraints.Empty do
       clauses: []
   end
 
+  def to_string(%Empty{}) do
+    "empty"
+  end
+
   defimpl String.Chars do
-    def to_string(_) do
-      "empty"
-    end
+    defdelegate to_string(empty), to: Resolver.Constraints.Empty
   end
 
   defimpl Inspect do

@@ -1,6 +1,5 @@
 defmodule Resolver do
   alias Resolver.{
-    Assignment,
     Incompatibility,
     PackageLister,
     PackageRange,
@@ -24,7 +23,7 @@ defmodule Resolver do
           {:choice, package, state} -> solve(package, state)
         end
 
-      {:error, incompatibility} ->
+      {:error, incompatibility, _state} ->
         {:error, incompatibility}
     end
   end
@@ -47,7 +46,7 @@ defmodule Resolver do
       end)
 
     case result do
-      {:error, incompatibility} -> {:error, incompatibility}
+      {:error, incompatibility, state} -> {:error, incompatibility, state}
       {changed, state} -> unit_propagation(changed, state)
     end
   end
@@ -59,12 +58,14 @@ defmodule Resolver do
         {:halt, {[result], state}}
 
       {:error, incompatibility} ->
-        {:halt, {:error, incompatibility}}
+        {:halt, {:error, incompatibility, state}}
     end
   end
 
   defp propagate_incompatibility([term | terms], unsatisified, incompatibility, state) do
-    case PartialSolution.relation(state.solution, term) do
+    x = PartialSolution.relation(state.solution, term)
+
+    case x do
       :disjoint ->
         # If the term is contradicted by the partial solution then the
         # incompatibility is also contradicted so we can deduce nothing
@@ -90,7 +91,9 @@ defmodule Resolver do
 
   defp propagate_incompatibility([], unsatisfied, incompatibility, state) do
     # Only one term in the incompatibility was unsatisfied
-    Logger.debug("RESOLVER: derived #{unsatisfied.package_range}")
+    Logger.debug(
+      "RESOLVER: derived#{if unsatisfied.positive, do: " not"} #{unsatisfied.package_range}"
+    )
 
     solution =
       PartialSolution.derive(
@@ -264,17 +267,21 @@ defmodule Resolver do
             # remainder
 
             difference =
-              Assignment.difference(resolution.most_recent_satisfier, resolution.most_recent_term)
+              Term.difference(resolution.most_recent_satisfier.term, resolution.most_recent_term)
 
             if difference do
-              satisfier = PartialSolution.satisfier(state.solution, Term.inverse(difference.term))
+              satisfier = PartialSolution.satisfier(state.solution, Term.inverse(difference))
 
               previous_satisfier_level =
                 max(resolution.previous_satisfier_level, satisfier.decision_level)
 
-              %{resolution | previous_satisfier_level: previous_satisfier_level}
+              %{
+                resolution
+                | difference: difference,
+                  previous_satisfier_level: previous_satisfier_level
+              }
             else
-              resolution
+              %{resolution | difference: difference}
             end
           else
             resolution
@@ -322,7 +329,7 @@ defmodule Resolver do
       # for more details.
       new_terms =
         if resolution.difference,
-          do: new_terms ++ [Assignment.inverse(resolution.difference)],
+          do: new_terms ++ [Term.inverse(resolution.difference)],
           else: new_terms
 
       incompatibility =

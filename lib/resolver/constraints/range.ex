@@ -392,28 +392,53 @@ defmodule Resolver.Constraints.Range do
   defp version_compare(_left, nil), do: :lt
   defp version_compare(left, right), do: Version.compare(left, right)
 
+  def to_string(%Range{min: nil, max: nil}) do
+    "any"
+  end
+
+  def to_string(%Range{min: version, max: version, include_min: true, include_max: true}) do
+    version
+  end
+
+  def to_string(%Range{
+        min: %Elixir.Version{major: min_major, minor: min_minor, patch: 0, pre: pre},
+        max: %Elixir.Version{major: max_major, minor: 0, patch: 0, pre: [0]},
+        include_min: true,
+        include_max: false
+      })
+      when min_major + 1 == max_major do
+    "~> #{min_major}.#{min_minor}#{pre_to_string(pre)}"
+  end
+
+  def to_string(%Range{
+        min: %Elixir.Version{major: min_major, minor: min_minor, patch: min_patch, pre: pre},
+        max: %Elixir.Version{major: max_major, minor: max_minor, patch: 0, pre: [0]},
+        include_min: true,
+        include_max: false
+      })
+      when min_major == max_major and min_minor + 1 == max_minor do
+    "~> #{min_major}.#{min_minor}.#{min_patch}#{pre_to_string(pre)}"
+  end
+
+  def to_string(%Range{min: min, max: max, include_min: include_min, include_max: include_max}) do
+    min = if min, do: ">#{include(include_min)} #{min}"
+    max = if max, do: "<#{include(include_max)} #{max}"
+
+    if min && max do
+      "#{min} and #{max}"
+    else
+      min || max
+    end
+  end
+
+  defp pre_to_string([]), do: ""
+  defp pre_to_string(pre), do: "-" <> Enum.join(pre, ".")
+
+  defp include(true), do: "="
+  defp include(false), do: ""
+
   defimpl String.Chars do
-    def to_string(%{min: nil, max: nil}) do
-      "any"
-    end
-
-    def to_string(%{min: version, max: version, include_min: true, include_max: true}) do
-      version
-    end
-
-    def to_string(%{min: min, max: max, include_min: include_min, include_max: include_max}) do
-      min = if min, do: ">#{include(include_min)} #{min}"
-      max = if max, do: "<#{include(include_max)} #{max}"
-
-      if min && max do
-        "#{min} and #{max}"
-      else
-        min || max
-      end
-    end
-
-    defp include(true), do: "="
-    defp include(false), do: ""
+    defdelegate to_string(range), to: Resolver.Constraints.Range
   end
 
   defimpl Inspect do

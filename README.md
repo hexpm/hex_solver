@@ -9,7 +9,6 @@ To be used by [Hex](https://github.com/hexpm/hex).
 ### TODO
 
 * Package repositories
-* Error reporting
 
 ### To investigate
 

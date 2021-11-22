@@ -14,24 +14,16 @@ defmodule Resolver.Assignment do
     %{left | term: Term.intersect(left.term, right.term)}
   end
 
-  def difference(%Assignment{} = left, %Term{} = right) do
-    if term = Term.intersect(left.term, Term.inverse(right)) do
-      %{left | term: term}
-    end
-  end
-
-  def inverse(%Assignment{} = assignment) do
-    %{assignment | term: Term.inverse(assignment.term)}
-  end
-
   def decision?(%Assignment{cause: cause}) do
     cause == nil
   end
 
+  def to_string(%Assignment{term: term}) do
+    Kernel.to_string(term)
+  end
+
   defimpl String.Chars do
-    def to_string(%{term: term}) do
-      Kernel.to_string(term)
-    end
+    defdelegate to_string(assignment), to: Resolver.Assignment
   end
 
   defimpl Inspect do
