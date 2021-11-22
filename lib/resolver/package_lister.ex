@@ -44,16 +44,17 @@ defmodule Resolver.PackageLister do
   # TODO: Don't return incompatibilities we already returned
   #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
   def dependencies_as_incompatibilities(registry, overrides, package, version) do
-    # IO.inspect({package, version})
     {:ok, versions} = registry.versions(package)
 
     versions_dependencies =
-      Map.new(versions, fn version ->
+      Enum.map(versions, fn version ->
         {:ok, dependencies} = registry.dependencies(package, version)
         {version, Map.new(dependencies)}
       end)
 
-    versions_dependencies[version]
+    {_version, dependencies} = List.keyfind(versions_dependencies, version, 0)
+
+    dependencies
     |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
     |> Enum.map(fn {dependency, {constraint, optional}} ->
       version_constraints =
@@ -70,19 +71,11 @@ defmodule Resolver.PackageLister do
           Enum.reverse(version_constraints),
           version,
           {constraint, optional},
-          _next? = false
+          _skip? = false
         )
 
-      upper =
-        next_bound(
-          version_constraints,
-          version,
-          {constraint, optional},
-          _next? = true
-        )
-
+      upper = next_bound(version_constraints, version, {constraint, optional}, _skip? = true)
       lower = if lower == List.first(versions), do: nil, else: lower
-
       range = %Range{min: lower, max: upper, include_min: !!lower}
       package_range = %PackageRange{name: package, constraint: range}
       dependency_range = %PackageRange{name: dependency, constraint: constraint}
@@ -98,27 +91,41 @@ defmodule Resolver.PackageLister do
     end)
   end
 
-  defp next_bound([{version, _constraint} | versions_dependencies], version, constraint, next?) do
-    find_bound(versions_dependencies, version, constraint, next?)
+  def next_bound(versions_dependencies, version, constraint, next?) do
+    versions_dependencies
+    |> skip_to_version(version)
+    |> skip_to_constraint(constraint, next?)
   end
 
-  defp next_bound([_ | versions_dependencies], version, constraint, next?) do
-    find_bound(versions_dependencies, version, constraint, next?)
+  defp skip_to_version([{version, _constraint} | _] = versions_dependencies, version) do
+    versions_dependencies
   end
 
-  defp find_bound([{version, constraint} | versions_dependencies], _last, constraint, next?) do
-    find_bound(versions_dependencies, version, constraint, next?)
+  defp skip_to_version([_ | versions_dependencies], version) do
+    skip_to_version(versions_dependencies, version)
   end
 
-  defp find_bound(_versions_dependencies?, last, _constraint, _next? = false) do
-    last
+  defp skip_to_constraint(
+         [{_version, constraint} | {version, _constraint}],
+         constraint,
+         _skip? = true
+       ) do
+    version
   end
 
-  defp find_bound([{next, _}], _last, _constraint, _next? = true) do
-    next
-  end
-
-  defp find_bound([], _last, _constraint, _next? = true) do
+  defp skip_to_constraint([{_version, constraint}], constraint, _skip? = true) do
     nil
+  end
+
+  defp skip_to_constraint([{version, _version_constraint}], _constraint, _skip? = true) do
+    version
+  end
+
+  defp skip_to_constraint([{version, constraint} | _], constraint, _skip? = false) do
+    version
+  end
+
+  defp skip_to_constraint([_ | versions_dependencies], constraint, skip?) do
+    skip_to_constraint(versions_dependencies, constraint, skip?)
   end
 end
