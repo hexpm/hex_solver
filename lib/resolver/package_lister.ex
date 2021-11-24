@@ -81,7 +81,6 @@ defmodule Resolver.PackageLister do
       }
 
       Incompatibility.new([package_term, dependency_term], :dependency)
-      # |> IO.inspect()
     end)
   end
 

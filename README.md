@@ -9,18 +9,7 @@ To be used by [Hex](https://github.com/hexpm/hex).
 ### TODO
 
 * Package repositories
-
-### To investigate
-
-* Handling of adjacent versions, specifically relating to pre-releases, see:
-  https://github.com/dart-lang/pub/blob/205ea58cffe58feae757a99e382d0b8a5a11e3fa/lib/src/solver/reformat_ranges.dart#L20.
-  May have to change `~>` to include pre-releases at the lower limit, so that
-  `~> 1.0` would be equivalent to `>= 1.0.0-0 and < 2.0.0-0`, which means
-  `~> 1.0 or ~> 2.0` would be equivalent to `>= 1.0.0-0 and < 3.0.0-0` with no
-  gaps in the middle. The implications of this would be minimized if we sort by
-  "best version" instead of "latest version", the "best version" would sort pre-releases
-  (and possibly retired versions) last, see:
-  https://github.com/dart-lang/pub/blob/f7fdcdd/lib/src/solver/package_lister.dart#L147.
+* Figure out pre-releases
 
 ### References
 

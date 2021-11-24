@@ -63,9 +63,7 @@ defmodule Resolver do
   end
 
   defp propagate_incompatibility([term | terms], unsatisified, incompatibility, state) do
-    x = PartialSolution.relation(state.solution, term)
-
-    case x do
+    case PartialSolution.relation(state.solution, term) do
       :disjoint ->
         # If the term is contradicted by the partial solution then the
         # incompatibility is also contradicted so we can deduce nothing
@@ -285,6 +283,7 @@ defmodule Resolver do
       # derivation), then the incompatibility is the root cause. We then backjump
       # to previous_satisfier_level, where the incompatibility is guaranteed to
       # allow propagation to produce more assignments
+
       if resolution.previous_satisfier_level < resolution.most_recent_satisfier.decision_level or
            resolution.most_recent_satisfier.cause == nil do
         solution = PartialSolution.backtrack(state.solution, resolution.previous_satisfier_level)
@@ -303,6 +302,7 @@ defmodule Resolver do
       # Doing this iteratively constructs a new new incompatibility that's guaranteed
       # to be true (we know for sure no solution will satisfy the incompatibility)
       # while also approximating the intuitive notion of the "root cause" of the conflict.
+
       new_terms =
         Enum.filter(incompatibility.terms, &(&1 != resolution.most_recent_term)) ++
           Enum.filter(
@@ -319,6 +319,7 @@ defmodule Resolver do
       # In this case we add `most_recent_satisfier \ most_recent_term` to the
       # incompatibility as well. See https://github.com/dart-lang/pub/tree/master/doc/solver.md#conflict-resolution
       # for more details.
+
       new_terms =
         if resolution.difference,
           do: new_terms ++ [Term.inverse(resolution.difference)],
