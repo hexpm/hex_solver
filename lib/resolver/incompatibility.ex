@@ -89,12 +89,12 @@ defmodule Resolver.Incompatibility do
   end
 
   def to_string(%Incompatibility{terms: [%Term{positive: false} = term]}) do
-    "#{terse_name(term_abs(term))} is required"
+    "#{terse_name(%Term{term | positive: true})} is required"
   end
 
   def to_string(%Incompatibility{terms: [left, right]}) when left.positive == right.positive do
     if left.positive do
-      "#{terse_name(term_abs(left))} is incompatible with #{terse_name(term_abs(right))}"
+      "#{terse_name(%Term{left | positive: true})} is incompatible with #{terse_name(%Term{right | positive: true})}"
     else
       "either #{term_abs(left)} or #{term_abs(right)}"
     end
