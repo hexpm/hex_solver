@@ -18,12 +18,17 @@ defmodule Resolver.PartialSolution do
 
     case Map.fetch(solution.positive, name) do
       {:ok, positive} ->
-        Assignment.relation(positive, term)
+        case Term.relation(positive.term, term) do
+          :disjoint ->
+            if positive.term.optional and not term.optional, do: :overlapping, else: :disjoint
+
+          other ->
+            other
+        end
 
       :error ->
         case Map.fetch(solution.negative, name) do
-          {:ok, negative} -> Assignment.relation(negative, term)
-          :error when term.optional -> :disjoint
+          {:ok, negative} -> Term.relation(negative.term, term)
           :error -> :overlapping
         end
     end
@@ -88,8 +93,8 @@ defmodule Resolver.PartialSolution do
     end)
   end
 
-  def derive(%PartialSolution{} = solution, package_range, positive, incompatibility) do
-    {assignment, solution} = assign(solution, package_range, positive, incompatibility)
+  def derive(%PartialSolution{} = solution, term, incompatibility) do
+    {assignment, solution} = assign(solution, term, incompatibility)
     register(solution, assignment)
   end
 
@@ -97,6 +102,7 @@ defmodule Resolver.PartialSolution do
     attempted_solutions = solution.attempted_solutions + if solution.backtracking, do: 1, else: 0
     decisions = Map.put(solution.decisions, package, version)
     package_range = %PackageRange{name: package, constraint: version}
+    term = %Term{package_range: package_range, positive: true}
 
     solution = %{
       solution
@@ -105,13 +111,11 @@ defmodule Resolver.PartialSolution do
         decisions: decisions
     }
 
-    {assignment, solution} = assign(solution, package_range, true, nil)
+    {assignment, solution} = assign(solution, term, nil)
     register(solution, assignment)
   end
 
-  defp assign(solution, package_range, positive, incompatibility) do
-    term = %Term{positive: positive, package_range: package_range}
-
+  defp assign(solution, term, incompatibility) do
     assignment = %Assignment{
       term: term,
       decision_level: map_size(solution.decisions),
@@ -119,7 +123,8 @@ defmodule Resolver.PartialSolution do
       cause: incompatibility
     }
 
-    {assignment, %{solution | assignments: [assignment | solution.assignments]}}
+    solution = %{solution | assignments: [assignment | solution.assignments]}
+    {assignment, solution}
   end
 
   defp register(solution, assignment) do
@@ -154,6 +159,7 @@ defmodule Resolver.PartialSolution do
     solution.positive
     |> Map.values()
     |> Enum.reject(&Map.has_key?(solution.decisions, &1.term.package_range.name))
+    |> Enum.reject(& &1.term.optional)
     |> Enum.map(& &1.term.package_range)
   end
 end

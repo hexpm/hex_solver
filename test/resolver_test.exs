@@ -220,6 +220,17 @@ defmodule ResolverTest do
 
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0", "opt" => "1.0.0"}
     end
+
+    test "with conflict" do
+      Registry.put("$root", "1.0.0", [{"ex_crypto", ">= 0.0.0"}, {"postgrex", ">= 0.0.0"}])
+      Registry.put("poison", "1.0.0", [{"decimal", "~> 2.0", :optional}])
+      Registry.put("postgrex", "1.0.0", [{"decimal", "~> 1.0"}])
+      Registry.put("ex_crypto", "1.0.0", [{"poison", ">= 1.0.0"}])
+      Registry.put("decimal", "1.0.0", [])
+      Registry.put("decimal", "2.0.0", [])
+
+      assert {:error, _} = Resolver.run(Registry, %{}, MapSet.new())
+    end
   end
 
   describe "run/0 overrides" do

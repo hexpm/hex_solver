@@ -91,18 +91,10 @@ defmodule Resolver do
 
   defp propagate_incompatibility([], unsatisfied, incompatibility, state) do
     # Only one term in the incompatibility was unsatisfied
-    Logger.debug(
-      "RESOLVER: derived#{if unsatisfied.positive, do: " not"} #{unsatisfied.package_range}"
-    )
+    unsatisfied = %{unsatisfied | positive: not unsatisfied.positive}
+    Logger.debug("RESOLVER: derived #{unsatisfied}")
 
-    solution =
-      PartialSolution.derive(
-        state.solution,
-        unsatisfied.package_range,
-        not unsatisfied.positive,
-        incompatibility
-      )
-
+    solution = PartialSolution.derive(state.solution, unsatisfied, incompatibility)
     {:ok, unsatisfied.package_range.name, %{state | solution: solution}}
   end
 
