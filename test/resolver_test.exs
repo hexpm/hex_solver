@@ -90,7 +90,7 @@ defmodule ResolverTest do
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
-    test "backtrack" do
+    test "backtrack 1" do
       Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
       Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}])
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
@@ -100,6 +100,19 @@ defmodule ResolverTest do
       Registry.put("baz", "1.0.0", [])
 
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
+    end
+
+    test "backtrack 2" do
+      Registry.put("$root", "1.0.0", [{"gen_smtp", "~> 1.1.0"}, {"cowboy", "~> 2.7"}])
+      Registry.put("cowboy", "2.6.0", [{"ranch", "~> 1.7.0"}])
+      Registry.put("cowboy", "2.7.0", [{"ranch", "~> 1.7.1"}])
+      Registry.put("cowboy", "2.8.0", [{"ranch", "~> 1.7.1"}])
+      Registry.put("cowboy", "2.9.0", [{"ranch", "1.8.0"}])
+      Registry.put("gen_smtp", "1.1.1", [{"ranch", ">= 1.7.0"}])
+      Registry.put("ranch", "1.8.0", [])
+      Registry.put("ranch", "2.1.0", [])
+
+      assert run() == %{"cowboy" => "2.9.0", "gen_smtp" => "1.1.1", "ranch" => "1.8.0"}
     end
 
     test "loop" do

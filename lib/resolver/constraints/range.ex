@@ -202,7 +202,7 @@ defmodule Resolver.Constraints.Range do
             %Range{
               min: right.max,
               max: left.max,
-              include_min: not right.include_min,
+              include_min: not right.include_max,
               include_max: left.include_max
             }
         end
