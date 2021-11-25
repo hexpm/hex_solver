@@ -183,8 +183,7 @@ defmodule Resolver.Case do
           Registry.drop([package])
 
         nil ->
-          IO.puts("SUCCEED SHRINK #{package}")
-          Registry.drop([package])
+          IO.puts("FAILED SHRINK TIMEOUT #{package}")
       end
     end)
   end
@@ -224,8 +223,7 @@ defmodule Resolver.Case do
             Registry.drop_version(package, version)
 
           nil ->
-            IO.puts("SUCCEED SHRINK #{package} #{version}")
-            Registry.drop_version(package, version)
+            IO.puts("FAILED SHRINK TIMEOUT #{package} #{version}")
         end
       end)
     end)

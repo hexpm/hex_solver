@@ -115,6 +115,15 @@ defmodule ResolverTest do
       assert run() == %{"cowboy" => "2.9.0", "gen_smtp" => "1.1.1", "ranch" => "1.8.0"}
     end
 
+    test "overlapping ranges" do
+      Registry.put("$root", "1.0.0", [{"phoenix_live_view", "~> 1.0 or ~> 1.1"}])
+      Registry.put("phoenix_live_view", "1.0.0", [{"phoenix", "~> 1.0 or ~> 2.0"}])
+      Registry.put("phoenix_live_view", "1.1.0", [{"phoenix", "~> 2.1"}])
+      Registry.put("phoenix", "1.0.0", [])
+
+      assert run() == %{"phoenix_live_view" => "1.0.0", "phoenix" => "1.0.0"}
+    end
+
     test "loop" do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
@@ -146,11 +155,61 @@ defmodule ResolverTest do
       assert incompatibility.cause == :no_versions
     end
 
-    test "overlapping ranges" do
-      Registry.put("$root", "1.0.0", [{"phoenix_live_view", "~> 1.0 or ~> 1.1"}])
-      Registry.put("phoenix_live_view", "1.0.0", [{"phoenix", "~> 1.0 or ~> 2.0"}])
-      Registry.put("phoenix_live_view", "1.1.0", [{"phoenix", "~> 2.1"}])
-      Registry.put("phoenix", "1.0.0", [])
+    test "no matching transient dependency 1" do
+      Registry.put("$root", "1.0.0", [{"amqp_client", "~> 3.6"}, {"rabbit_common", "~> 3.6"}])
+      Registry.put("amqp_client", "3.9.4", [{"rabbit_common", "3.9.4"}])
+      Registry.put("amqp_client", "3.9.5", [{"rabbit_common", "3.9.5"}])
+      Registry.put("amqp_client", "3.9.8", [{"rabbit_common", "3.9.8"}])
+      Registry.put("rabbit_common", "3.8.5-rc.2", [])
+      Registry.put("rabbit_common", "3.8.5", [])
+      Registry.put("rabbit_common", "3.8.14", [])
+
+      assert {:conflict, _, _} = run()
+    end
+
+    test "no matching transient dependency 2" do
+      Registry.put("$root", "1.0.0", [
+        {"amqp_client", "~> 3.6"},
+        {"consul", "~> 1.1"},
+        {"rabbit_common", "~> 3.6"}
+      ])
+
+      Registry.put("amqp_client", "3.8.10", [{"rabbit_common", "3.8.10"}])
+      Registry.put("amqp_client", "3.8.11", [{"rabbit_common", "3.8.11"}])
+      Registry.put("amqp_client", "3.8.14", [{"rabbit_common", "3.8.14"}])
+      Registry.put("amqp_client", "3.8.25", [{"rabbit_common", "3.8.25"}])
+      Registry.put("consul", "1.1.0", [{"jsx", "~> 2.8.0"}])
+      Registry.put("jsx", "2.8.3", [])
+      Registry.put("rabbit_common", "3.8.14", [{"jsx", "2.11.0"}])
+      Registry.put("rabbit_common", "3.8.25", [{"jsx", "3.1.0"}])
+      Registry.put("rabbit_common", "3.8.5-rc.2", [{"jsx", "2.9.0"}])
+      Registry.put("rabbit_common", "3.8.5", [{"jsx", "2.9.0"}])
+
+      assert {:conflict, _, _} = run()
+    end
+
+    test "no matching transient dependency 3" do
+      Registry.put("$root", "1.0.0", [
+        {"amqp", "~> 1.0 or ~> 1.1"},
+        {"amqp_client", "~> 3.7"},
+        {"rabbit_common", "~> 3.7"}
+      ])
+
+      Registry.put("amqp_client", "3.8.25", [{"rabbit_common", "3.8.25"}])
+      Registry.put("rabbit_common", "3.8.12-rc.3", [{"jsx", "2.11.0"}])
+      Registry.put("amqp_client", "3.8.21", [{"rabbit_common", "3.8.21"}])
+      Registry.put("rabbit_common", "3.8.19", [{"jsx", "3.1.0"}])
+      Registry.put("rabbit_common", "3.8.25", [{"jsx", "3.1.0"}])
+      Registry.put("amqp", "1.6.0", [{"amqp_client", "~> 3.8.0"}])
+      Registry.put("rabbit_common", "3.8.14", [{"jsx", "2.11.0"}])
+      Registry.put("amqp_client", "3.9.8", [{"rabbit_common", "3.9.8"}])
+      Registry.put("amqp_client", "3.8.5", [{"rabbit_common", "3.8.5"}])
+
+      Registry.put("amqp", "1.3.2", [
+        {"amqp_client", "~> 3.7.11"},
+        {"jsx", "~> 2.9"},
+        {"rabbit_common", "~> 3.7.11"}
+      ])
 
       assert {:conflict, _, _} = run()
     end

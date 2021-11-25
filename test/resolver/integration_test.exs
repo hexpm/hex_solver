@@ -16,9 +16,6 @@ defmodule Resolver.IntegrationTest do
   # ami_models 0.1.0
   # bypass 2.0.0
 
-  # other
-  # peluquero 0.99.8
-
   @expected_failures [
     {"achlys", "0.1.0"},
     {"achlys", "0.1.1"},
@@ -259,8 +256,7 @@ defmodule Resolver.IntegrationTest do
     "broen",
     "bypass",
     "ejabberd",
-    "kyu",
-    "peluquero"
+    "kyu"
   ]
 
   @tag timeout: 120_000
@@ -278,12 +274,9 @@ defmodule Resolver.IntegrationTest do
           assert {:error, _} = Resolver.run(Registry, %{}, MapSet.new())
 
         true ->
-          # assert {:ok, _} = Resolver.run(Registry, %{}, MapSet.new())
-          case Resolver.run(Registry, %{}, MapSet.new()) do
-            {:ok, _} -> :ok
-            {:error, _} -> IO.puts("{#{inspect(package)}, #{inspect(version)}},")
-          end
+          assert {:ok, _} = Resolver.run(Registry, %{}, MapSet.new())
       end
     end
   end
+
 end

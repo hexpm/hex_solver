@@ -74,9 +74,14 @@ defmodule Resolver.Registry.Process do
   end
 
   def drop_version(package, version) do
-    versions = Process.get({__MODULE__, :versions, package})
-    Process.put({__MODULE__, :versions, package}, versions -- [version])
     Process.delete({__MODULE__, :dependencies, package, version})
+    versions = Process.get({__MODULE__, :versions, package}) -- [version]
+
+    if versions == [] do
+      Process.delete({__MODULE__, :versions, package})
+    else
+      Process.put({__MODULE__, :versions, package}, versions)
+    end
   end
 
   def packages_with_dependencies(packages) do

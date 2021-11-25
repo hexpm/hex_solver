@@ -56,11 +56,11 @@ defmodule Resolver.Term do
         constraint = Constraint.difference(constraint(positive), constraint(negative))
         non_empty_term(left, constraint, true)
 
-      left.positive ->
+      left.positive and right.positive ->
         constraint = Constraint.intersect(constraint(left), constraint(right))
         non_empty_term(left, constraint, true)
 
-      true ->
+      not left.positive and not right.positive ->
         constraint = Constraint.union(constraint(left), constraint(right))
         non_empty_term(left, constraint, false)
     end

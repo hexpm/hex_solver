@@ -71,11 +71,11 @@ defmodule Resolver.Constraints.Union do
   defp do_difference(lefts, [], acc) do
     # If there are no more "right" ranges, none of the rest needs to
     # be subtracted and can be added as-is
-    Util.from_list(Enum.reverse(lefts) ++ acc)
+    Util.from_list(Enum.reverse(acc) ++ lefts)
   end
 
   defp do_difference([], _rights, acc) do
-    Util.from_list(acc)
+    Util.from_list(Enum.reverse(acc))
   end
 
   defp do_difference([left | lefts], [right | rights], acc) do
