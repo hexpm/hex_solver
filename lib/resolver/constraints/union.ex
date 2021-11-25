@@ -9,6 +9,7 @@ defmodule Resolver.Constraints.Union do
   # * Only %Range{} and %Version{}, no %Empty{}
   # * No "any range" (%Range{min: nil, max: nil})
   # * Elements sorted by their minimum version
+  # * Ranges do not overlap
 
   defstruct ranges: []
 

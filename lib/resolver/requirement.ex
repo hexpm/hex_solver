@@ -32,7 +32,7 @@ defmodule Resolver.Requirement do
         left, right -> Version.compare(left, right) in [:lt, :eq]
       end
     )
-    |> Util.from_list()
+    |> Util.union()
   end
 
   defp delex([op | rest], acc) when op in [:||, :or] do

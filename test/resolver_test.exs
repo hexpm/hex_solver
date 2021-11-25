@@ -145,6 +145,15 @@ defmodule ResolverTest do
       assert term.package_range.constraint == Version.parse!("1.0.0")
       assert incompatibility.cause == :no_versions
     end
+
+    test "overlapping ranges" do
+      Registry.put("$root", "1.0.0", [{"phoenix_live_view", "~> 1.0 or ~> 1.1"}])
+      Registry.put("phoenix_live_view", "1.0.0", [{"phoenix", "~> 1.0 or ~> 2.0"}])
+      Registry.put("phoenix_live_view", "1.1.0", [{"phoenix", "~> 2.1"}])
+      Registry.put("phoenix", "1.0.0", [])
+
+      assert {:conflict, _, _} = run()
+    end
   end
 
   describe "run/0 locked" do

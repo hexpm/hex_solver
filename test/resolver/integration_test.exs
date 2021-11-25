@@ -5,7 +5,6 @@ defmodule Resolver.IntegrationTest do
   alias Resolver.Registry.Process, as: Registry
 
   @moduletag :integration
-  @moduletag timeout: 120_000
 
   # ERRORS TO FIX
   # :timeout
@@ -18,7 +17,6 @@ defmodule Resolver.IntegrationTest do
   # bypass 2.0.0
 
   # other
-  # exzeitable 0.2.8
   # peluquero 0.99.8
 
   @expected_failures [
@@ -261,11 +259,11 @@ defmodule Resolver.IntegrationTest do
     "broen",
     "bypass",
     "ejabberd",
-    "exzeitable",
     "kyu",
     "peluquero"
   ]
 
+  @tag timeout: 120_000
   property "resolves releases" do
     load_registry()
 

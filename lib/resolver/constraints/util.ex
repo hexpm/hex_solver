@@ -24,7 +24,7 @@ defmodule Resolver.Constraints.Util do
 
           cond do
             acc == [] ->
-              [constraint | acc]
+              [constraint]
 
             not Constraint.allows_any?(previous, constraint) and
                 not adjacent?(previous, constraint) ->
