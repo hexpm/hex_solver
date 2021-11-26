@@ -1,6 +1,6 @@
 defmodule Resolver.PackageLister do
   alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
-  alias Resolver.Constraints.Range
+  alias Resolver.Constraints.{Range, Version}
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
@@ -34,7 +34,7 @@ defmodule Resolver.PackageLister do
     {package_range, versions} =
       Enum.min_by(package_range_versions, fn {_package_range, versions} -> length(versions) end)
 
-    {:ok, package_range, versions}
+    {:ok, package_range, List.first(Enum.sort(versions, &Version.prioritize/2))}
   catch
     :throw, {__MODULE__, :minimal_versions, name} ->
       {:error, name}

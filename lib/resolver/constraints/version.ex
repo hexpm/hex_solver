@@ -115,4 +115,16 @@ defmodule Resolver.Constraints.Version do
   def to_range(%Range{} = range) do
     range
   end
+
+  def prioritize(%Version{} = left, %Version{} = right) do
+    do_prioritize(left, right) == :gt
+  end
+
+  defp do_prioritize(left, right) do
+    cond do
+      left.pre != [] and right.pre == [] -> :lt
+      left.pre == [] and right.pre != [] -> :gt
+      true -> Version.compare(left, right)
+    end
+  end
 end

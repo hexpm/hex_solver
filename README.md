@@ -6,11 +6,6 @@ To be used by [Hex](https://github.com/hexpm/hex).
 
 **Still in development!**
 
-### TODO
-
-* Package repositories
-* Figure out pre-releases
-
 ### References
 
 * [PubGrub: Next-Generation Version Solving](https://nex3.medium.com/pubgrub-2fb6470504f)

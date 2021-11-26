@@ -103,55 +103,51 @@ defmodule Resolver do
       :done
     else
       case PackageLister.pick_package(state.registry, state.locked, unsatisfied) do
-        {:ok, package_range, versions} ->
-          if versions == [] do
-            # TODO: Detect if the constraint excludes a single version, then it is
-            #       from a lockfile (true?), in that case change the constraint
-            #       to allow any version, this gives better error reporting.
-            #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/version_solver.dart#L349-L352
+        {:ok, package_range, nil} ->
+          # TODO: Detect if the constraint excludes a single version, then it is
+          #       from a lockfile (true?), in that case change the constraint
+          #       to allow any version, this gives better error reporting.
+          #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/version_solver.dart#L349-L352
 
-            # If no version satisfies the constraint then add an incompatibility that indicates that
-            term = %Term{positive: true, package_range: package_range}
-            incompatibility = Incompatibility.new([term], :no_versions)
-            state = add_incompatibility(state, incompatibility)
-            {:choice, package_range.name, state}
-          else
-            # TODO: Pick "best" version instead of last versions
-            version = List.last(versions)
+          # If no version satisfies the constraint then add an incompatibility that indicates that
+          term = %Term{positive: true, package_range: package_range}
+          incompatibility = Incompatibility.new([term], :no_versions)
+          state = add_incompatibility(state, incompatibility)
+          {:choice, package_range.name, state}
 
-            incompatibilities =
-              PackageLister.dependencies_as_incompatibilities(
-                state.registry,
-                state.overrides,
-                package_range.name,
-                version
-              )
+        {:ok, package_range, version} ->
+          incompatibilities =
+            PackageLister.dependencies_as_incompatibilities(
+              state.registry,
+              state.overrides,
+              package_range.name,
+              version
+            )
 
-            {state, conflict} =
-              Enum.reduce(incompatibilities, {state, false}, fn incompatibility,
-                                                                {state, conflict} ->
-                # If an incompatibility is already satisfied then selecting this version would cause
-                # a conflict. We'll continue adding its dependencies then go back to unit propagation
-                # that will eventually choose a better version.
-                conflict =
-                  conflict or
-                    incompatibility_conflict?(state, incompatibility, package_range.name)
+          {state, conflict} =
+            Enum.reduce(incompatibilities, {state, false}, fn incompatibility,
+                                                              {state, conflict} ->
+              # If an incompatibility is already satisfied then selecting this version would cause
+              # a conflict. We'll continue adding its dependencies then go back to unit propagation
+              # that will eventually choose a better version.
+              conflict =
+                conflict or
+                  incompatibility_conflict?(state, incompatibility, package_range.name)
 
-                state = add_incompatibility(state, incompatibility)
-                {state, conflict}
-              end)
+              state = add_incompatibility(state, incompatibility)
+              {state, conflict}
+            end)
 
-            solution =
-              if conflict do
-                state.solution
-              else
-                Logger.debug("RESOLVER: selecting #{package_range.name} #{version}")
-                PartialSolution.decide(state.solution, package_range.name, version)
-              end
+          solution =
+            if conflict do
+              state.solution
+            else
+              Logger.debug("RESOLVER: selecting #{package_range.name} #{version}")
+              PartialSolution.decide(state.solution, package_range.name, version)
+            end
 
-            state = %{state | solution: solution}
-            {:choice, package_range.name, state}
-          end
+          state = %{state | solution: solution}
+          {:choice, package_range.name, state}
 
         {:error, name} ->
           package_range = %PackageRange{name: name, constraint: Util.any()}

@@ -74,6 +74,15 @@ defmodule ResolverTest do
       assert run() == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
+    test "prioritize stable versions" do
+      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("foo", "1.2.0-dev", [])
+
+      assert run() == %{"foo" => "1.1.0"}
+    end
+
     test "two deps" do
       Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "2.0.0"}])
       Registry.put("foo", "1.0.0", [])
