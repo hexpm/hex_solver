@@ -19,20 +19,7 @@ defmodule Resolver.Requirement do
   end
 
   defp delex([], acc) do
-    # TODO: Constraint.compare_min
-    acc
-    |> Enum.sort_by(
-      fn
-        %Range{min: min} -> min
-        %Elixir.Version{} = version -> version
-      end,
-      fn
-        nil, _version -> true
-        _version, nil -> false
-        left, right -> Version.compare(left, right) in [:lt, :eq]
-      end
-    )
-    |> Util.union()
+    Util.union(acc)
   end
 
   defp delex([op | rest], acc) when op in [:||, :or] do
