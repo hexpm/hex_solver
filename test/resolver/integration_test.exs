@@ -6,16 +6,6 @@ defmodule Resolver.IntegrationTest do
 
   @moduletag :integration
 
-  # ERRORS TO FIX
-  # :timeout
-  # broen 2.2.3
-  # ejabberd 17.11.0
-  # kyu 1.2.1
-  # amqp_director 1.1.1
-  # ami 0.1.4
-  # ami_models 0.1.0
-  # bypass 2.0.0
-
   @expected_failures [
     {"achlys", "0.1.0"},
     {"achlys", "0.1.1"},
@@ -26,6 +16,27 @@ defmodule Resolver.IntegrationTest do
     {"achlys", "0.1.9"},
     {"achlys", "0.2.0"},
     {"beamoji", "0.1.0"},
+    {"broen", "2.0.0-rc.1"},
+    {"broen", "2.0.0-rc.2"},
+    {"broen", "2.0.0"},
+    {"broen", "2.0.1"},
+    {"broen", "2.0.2"},
+    {"broen", "2.0.3"},
+    {"broen", "2.0.4"},
+    {"broen", "2.0.5"},
+    {"broen", "2.0.6"},
+    {"broen", "2.0.7"},
+    {"broen", "2.1.0"},
+    {"broen", "2.2.0"},
+    {"broen", "2.2.1"},
+    {"broen", "2.2.2"},
+    {"broen", "2.2.3"},
+    {"broen", "2.2.4"},
+    {"broen", "2.2.5"},
+    {"broen", "2.2.6"},
+    {"broen", "3.0.0"},
+    {"broen", "3.0.1"},
+    {"broen", "3.0.2"},
     {"brucke", "1.15.0"},
     {"brucke", "1.15.1"},
     {"brucke", "1.15.2"},
@@ -133,6 +144,10 @@ defmodule Resolver.IntegrationTest do
     {"hexer", "0.2.0"},
     {"katana", "0.2.17"},
     {"katana", "0.2.18"},
+    {"kyu", "1.0.0"},
+    {"kyu", "1.1.0"},
+    {"kyu", "1.2.0"},
+    {"kyu", "1.2.1"},
     {"lanes_barista", "0.1.0"},
     {"lasp", "0.10.0"},
     {"libhowl", "0.1.31"},
@@ -249,16 +264,6 @@ defmodule Resolver.IntegrationTest do
     {"zotonic_site_status", "1.0.0-d1"}
   ]
 
-  @skip [
-    "ami_models",
-    "ami",
-    "amqp_director",
-    "broen",
-    "bypass",
-    "ejabberd",
-    "kyu"
-  ]
-
   @tag timeout: 120_000
   property "resolves releases" do
     load_registry()
@@ -267,9 +272,6 @@ defmodule Resolver.IntegrationTest do
       Registry.put("$root", "1.0.0", dependencies)
 
       cond do
-        package in @skip ->
-          :ok
-
         {package, version} in @expected_failures ->
           assert {:error, _} = Resolver.run(Registry, %{}, MapSet.new())
 
@@ -278,5 +280,4 @@ defmodule Resolver.IntegrationTest do
       end
     end
   end
-
 end
