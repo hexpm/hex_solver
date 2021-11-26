@@ -824,4 +824,16 @@ defmodule Resolver.Constraints.RangeTest do
       refute Range.single_version?(%Range{min: version1, max: version2, include_min: true})
     end
   end
+
+  property "to_string/1" do
+    check all range <- range() do
+      assert is_binary(Range.to_string(range))
+    end
+  end
+
+  property "Kernel.inspect/1" do
+    check all range <- range() do
+      assert is_binary(inspect(range))
+    end
+  end
 end

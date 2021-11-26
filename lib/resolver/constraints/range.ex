@@ -397,7 +397,7 @@ defmodule Resolver.Constraints.Range do
   end
 
   def to_string(%Range{min: version, max: version, include_min: true, include_max: true}) do
-    version
+    Kernel.to_string(version)
   end
 
   def to_string(%Range{
