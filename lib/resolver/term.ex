@@ -45,8 +45,6 @@ defmodule Resolver.Term do
 
   def intersect(%Term{} = left, %Term{} = right) do
     true = compatible_package?(left, right)
-    # NOTE: Technically this should be set, but all tests pass without it
-    # left = %{left | optional: left.optional and right.optional}
 
     cond do
       left.positive != right.positive ->

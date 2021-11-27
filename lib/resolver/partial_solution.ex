@@ -3,9 +3,6 @@ defmodule Resolver.PartialSolution do
 
   require Logger
 
-  # NOTE: Unclear if we need to separate :positive and :negative,
-  #       all tests pass when they are merged into a single map
-
   defstruct assignments: [],
             decisions: %{},
             positive: %{},
