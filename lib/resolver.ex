@@ -116,13 +116,18 @@ defmodule Resolver do
           {:choice, package_range.name, state}
 
         {:ok, package_range, version} ->
-          incompatibilities =
+          name = package_range.name
+
+          {incompatibilities, returned_incompatibilities} =
             PackageLister.dependencies_as_incompatibilities(
               state.registry,
+              Map.get(state.returned_incompatibilities, name, %{}),
               state.overrides,
-              package_range.name,
+              name,
               version
             )
+
+          state = put_in(state.returned_incompatibilities[name], returned_incompatibilities)
 
           {state, conflict} =
             Enum.reduce(incompatibilities, {state, false}, fn incompatibility,
@@ -132,7 +137,7 @@ defmodule Resolver do
               # that will eventually choose a better version.
               conflict =
                 conflict or
-                  incompatibility_conflict?(state, incompatibility, package_range.name)
+                  incompatibility_conflict?(state, incompatibility, name)
 
               state = add_incompatibility(state, incompatibility)
               {state, conflict}
@@ -147,7 +152,7 @@ defmodule Resolver do
             end
 
           state = %{state | solution: solution}
-          {:choice, package_range.name, state}
+          {:choice, name, state}
 
         {:error, name} ->
           package_range = %PackageRange{name: name, constraint: Util.any()}
@@ -350,7 +355,8 @@ defmodule Resolver do
       incompatibilities: %{},
       registry: registry,
       locked: locked,
-      overrides: overrides
+      overrides: overrides,
+      returned_incompatibilities: %{}
     }
     |> add_incompatibility(root)
   end

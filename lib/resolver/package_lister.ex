@@ -40,10 +40,7 @@ defmodule Resolver.PackageLister do
       {:error, name}
   end
 
-  # NOTE: Much of this can be cached
-  # TODO: Don't return incompatibilities we already returned
-  #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/package_lister.dart#L255-L259
-  def dependencies_as_incompatibilities(registry, overrides, package, version) do
+  def dependencies_as_incompatibilities(registry, already_returned, overrides, package, version) do
     {:ok, versions} = registry.versions(package)
 
     versions_dependencies =
@@ -54,34 +51,56 @@ defmodule Resolver.PackageLister do
 
     {_version, dependencies} = List.keyfind(versions_dependencies, version, 0)
 
-    dependencies
-    |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
-    |> Enum.map(fn {dependency, {constraint, optional}} ->
-      version_constraints =
-        Enum.map(versions_dependencies, fn {version, dependencies} ->
-          {version, dependencies[dependency]}
-        end)
+    incompatibilities =
+      dependencies
+      |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
+      |> Enum.reject(fn {dependency, _} ->
+        case Map.fetch(already_returned, dependency) do
+          {:ok, returned_constraint} -> Constraint.allows?(returned_constraint, version)
+          :error -> false
+        end
+      end)
+      |> Enum.map(fn {dependency, {constraint, optional}} ->
+        version_constraints =
+          Enum.map(versions_dependencies, fn {version, dependencies} ->
+            {version, dependencies[dependency]}
+          end)
 
-      # Find range of versions around the current version for which the
-      # constraint is the same to create an incompatibility based on a
-      # larger set of versions for the parent package.
-      # This optimization let us skip many versions during conflict resolution.
-      lower = lower_bound(Enum.reverse(version_constraints), version, {constraint, optional})
-      upper = upper_bound(version_constraints, version, {constraint, optional})
+        # Find range of versions around the current version for which the
+        # constraint is the same to create an incompatibility based on a
+        # larger set of versions for the parent package.
+        # This optimization let us skip many versions during conflict resolution.
+        lower = lower_bound(Enum.reverse(version_constraints), version, {constraint, optional})
+        upper = upper_bound(version_constraints, version, {constraint, optional})
 
-      range = %Range{min: lower, max: upper, include_min: !!lower}
-      package_range = %PackageRange{name: package, constraint: range}
-      dependency_range = %PackageRange{name: dependency, constraint: constraint}
-      package_term = %Term{positive: true, package_range: package_range}
+        range = %Range{min: lower, max: upper, include_min: !!lower}
+        package_range = %PackageRange{name: package, constraint: range}
+        dependency_range = %PackageRange{name: dependency, constraint: constraint}
+        package_term = %Term{positive: true, package_range: package_range}
 
-      dependency_term = %Term{
-        positive: false,
-        package_range: dependency_range,
-        optional: optional
-      }
+        dependency_term = %Term{
+          positive: false,
+          package_range: dependency_range,
+          optional: optional
+        }
 
-      Incompatibility.new([package_term, dependency_term], :dependency)
-    end)
+        Incompatibility.new([package_term, dependency_term], :dependency)
+      end)
+
+    already_returned =
+      Enum.reduce(incompatibilities, already_returned, fn incompatibility, acc ->
+        [package_term, dependency_term] =
+          case incompatibility do
+            %Incompatibility{terms: [single]} -> [single, single]
+            %Incompatibility{terms: [package, dependency]} -> [package, dependency]
+          end
+
+        name = dependency_term.package_range.name
+        constraint = package_term.package_range.constraint
+        Map.update(acc, name, constraint, &Constraint.union(&1, constraint))
+      end)
+
+    {incompatibilities, already_returned}
   end
 
   def lower_bound(versions_dependencies, version, constraint) do

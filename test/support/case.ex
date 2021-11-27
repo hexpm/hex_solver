@@ -166,7 +166,7 @@ defmodule Resolver.Case do
                 true
 
               {:error, _incompatibility} ->
-                false
+                true
             end
           rescue
             _exception ->
@@ -184,6 +184,7 @@ defmodule Resolver.Case do
 
         nil ->
           IO.puts("FAILED SHRINK TIMEOUT #{package}")
+          # Registry.drop([package])
       end
     end)
   end
@@ -205,8 +206,8 @@ defmodule Resolver.Case do
                 {:ok, _result} ->
                   true
 
-                {:error, incompatibility} ->
-                  incompatibility_no_versions?(incompatibility)
+                {:error, _incompatibility} ->
+                  true
               end
             rescue
               _exception ->
@@ -224,6 +225,7 @@ defmodule Resolver.Case do
 
           nil ->
             IO.puts("FAILED SHRINK TIMEOUT #{package} #{version}")
+            # Registry.drop_version(package, version)
         end
       end)
     end)

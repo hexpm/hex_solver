@@ -268,7 +268,7 @@ defmodule Resolver.IntegrationTest do
   property "resolves releases" do
     load_registry()
 
-    check all {package, version, dependencies} <- release() do
+    check all {package, version, dependencies} <- release(), max_runs: 100_000 do
       Registry.put("$root", "1.0.0", dependencies)
 
       cond do
