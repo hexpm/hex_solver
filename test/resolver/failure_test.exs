@@ -1,30 +1,15 @@
 defmodule Resolver.FailureTest do
-  use ExUnit.Case, async: true
+  use Resolver.Case, async: true
 
   alias Resolver.Failure
   alias Resolver.Registry.Process, as: Registry
 
-  defp run(locked \\ %{}, overrides \\ []) do
-    locked = Map.new(locked, fn {package, version} -> {package, Version.parse!(version)} end)
-
-    {:error, incompatibility} = Resolver.run(Registry, locked, MapSet.new(overrides))
-    # inspect_incompatibility(incompatibility, "")
+  defp run(overrides \\ []) do
+    assert {:error, incompatibility} = Resolver.run(Registry, MapSet.new(overrides))
     Failure.write(incompatibility)
   end
 
-  # defp inspect_incompatibility(incompatibility, indent) do
-  #   case incompatibility.cause do
-  #     {:conflict, left, right} ->
-  #       IO.puts("#{indent}* #{incompatibility} (conflict)")
-  #       inspect_incompatibility(left, "  #{indent}")
-  #       inspect_incompatibility(right, "  #{indent}")
-
-  #     _ ->
-  #       IO.puts("#{indent}* #{incompatibility} (#{incompatibility.cause})")
-  #   end
-  # end
-
-  test "conflicting constraints" do
+  test "conflicting constraints 1" do
     Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}, {"bar", "~> 1.0"}])
     Registry.put("foo", "1.0.0", [{"bar", "~> 2.0"}])
     Registry.put("bar", "1.0.0", [])
@@ -33,6 +18,18 @@ defmodule Resolver.FailureTest do
     assert run() == """
            Because every version of foo depends on bar ~> 2.0 and myapp depends on bar ~> 1.0, no version of foo is allowed.
            So, because myapp depends on foo 1.0.0, version solving failed.\
+           """
+  end
+
+  test "conflicting constraints 2" do
+    Registry.put("$root", "1.0.0", [{"bar", "1.0.0"}, {"foo", "~> 2.0"}])
+    Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])
+    Registry.put("foo", "1.0.0", [])
+    Registry.put("foo", "2.0.0", [])
+
+    assert run() == """
+           Because myapp depends on bar 1.0.0 which depends on foo 1.0.0, foo 1.0.0 is required.
+           So, because myapp depends on foo ~> 2.0, version solving failed.\
            """
   end
 
@@ -80,6 +77,18 @@ defmodule Resolver.FailureTest do
                And because foo >= 1.1.0 depends on y ~> 1.0, foo >= 1.1.0 is forbidden.
                And because foo < 1.1.0 is forbidden (1), no version of foo is allowed.
                So, because myapp depends on foo ~> 1.0, version solving failed.\
+           """
+  end
+
+  test "locked" do
+    Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "~> 2.0"}])
+    Registry.put("$lock", "1.0.0", [{"foo", "1.0.0", :optional}])
+    Registry.put("foo", "1.0.0", [])
+    Registry.put("foo", "2.0.0", [])
+
+    assert run() == """
+           Because lock specifies foo 1.0.0, foo 1.0.0 is required.
+           So, because myapp depends on foo ~> 2.0, version solving failed.\
            """
   end
 end

@@ -95,23 +95,29 @@ defmodule Resolver.Term do
     }
   end
 
-  def to_string(%Term{package_range: package_range, positive: positive, optional: optional}) do
-    "#{positive(positive)}#{package_range}#{optional(optional)}"
+  def to_string(%Term{package_range: package_range, positive: positive}) do
+    "#{positive(positive)}#{package_range}"
   end
 
   defp positive(true), do: ""
   defp positive(false), do: "not "
-
-  defp optional(true), do: " (optional)"
-  defp optional(false), do: ""
 
   defimpl String.Chars do
     defdelegate to_string(term), to: Resolver.Term
   end
 
   defimpl Inspect do
-    def inspect(term, _opts) do
-      "#Term<#{to_string(term)}>"
+    def inspect(
+          %Term{package_range: package_range, positive: positive, optional: optional},
+          _opts
+        ) do
+      "#Term<#{positive(positive)}#{package_range}#{optional(optional)}>"
     end
+
+    defp positive(true), do: ""
+    defp positive(false), do: "not "
+
+    defp optional(true), do: " (optional)"
+    defp optional(false), do: ""
   end
 end

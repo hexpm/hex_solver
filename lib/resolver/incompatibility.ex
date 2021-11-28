@@ -40,13 +40,23 @@ defmodule Resolver.Incompatibility do
 
   def failure?(%Incompatibility{terms: []}), do: true
 
-  def failure?(%Incompatibility{terms: [%Term{package_range: %PackageRange{name: "$root"}}]}),
+  def failure?(%Incompatibility{terms: [term]}) when term.package_range.name == "$root",
     do: true
 
   def failure?(%Incompatibility{}), do: false
 
-  def to_string(%Incompatibility{cause: :dependency, terms: terms}) do
-    [%Term{positive: true} = depender, %Term{positive: false} = dependee] = terms
+  def to_string(%Incompatibility{
+        cause: :dependency,
+        terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
+      })
+      when depender.package_range.name == "$lock" do
+    "lock specifies #{term_abs(dependee)}"
+  end
+
+  def to_string(%Incompatibility{
+        cause: :dependency,
+        terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
+      }) do
     "#{terse_every(depender)} depends on #{term_abs(dependee)}"
   end
 
@@ -121,12 +131,20 @@ defmodule Resolver.Incompatibility do
     end
   end
 
+  def to_string_and(left, right, left_line \\ nil, right_line \\ nil)
+
   def to_string_and(
-        %Incompatibility{} = left,
-        %Incompatibility{} = right,
-        left_line \\ nil,
-        right_line \\ nil
-      ) do
+        %Incompatibility{terms: [lock, _dependency], cause: :dependency} = left,
+        %Incompatibility{terms: [root, lock_dependency], cause: :dependency},
+        _left_line,
+        _right_line
+      )
+      when root.package_range.name == "$root" and lock_dependency.package_range.name == "$lock" and
+             lock.package_range.name == "$lock" do
+    to_string(left)
+  end
+
+  def to_string_and(%Incompatibility{} = left, %Incompatibility{} = right, left_line, right_line) do
     cond do
       requires_both = try_requires_both(left, right, left_line, right_line) ->
         requires_both
@@ -317,6 +335,7 @@ defmodule Resolver.Incompatibility do
   end
 
   defp package_name(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
+  defp package_name(%Term{package_range: %PackageRange{name: "$lock"}}), do: "lock"
   defp package_name(%Term{package_range: %PackageRange{name: name}}), do: name
 
   defp terse_name(term) do
@@ -328,6 +347,7 @@ defmodule Resolver.Incompatibility do
   end
 
   defp terse_every(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
+  defp terse_every(%Term{package_range: %PackageRange{name: "$lock"}}), do: "lock"
 
   defp terse_every(term) do
     if Constraint.any?(term.package_range.constraint) do

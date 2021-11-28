@@ -11,8 +11,8 @@ defmodule Resolver do
 
   require Logger
 
-  def run(registry, locked, overrides) do
-    solve("$root", new_state(registry, locked, overrides))
+  def run(registry, overrides) do
+    solve("$root", new_state(registry, overrides))
   end
 
   defp solve(next, state) do
@@ -102,13 +102,8 @@ defmodule Resolver do
     if unsatisfied == [] do
       :done
     else
-      case PackageLister.pick_package(state.registry, state.locked, unsatisfied) do
+      case PackageLister.pick_package(state.registry, unsatisfied) do
         {:ok, package_range, nil} ->
-          # TODO: Detect if the constraint excludes a single version, then it is
-          #       from a lockfile (true?), in that case change the constraint
-          #       to allow any version, this gives better error reporting.
-          #       https://github.com/dart-lang/pub/blob/master/lib/src/solver/version_solver.dart#L349-L352
-
           # If no version satisfies the constraint then add an incompatibility that indicates that
           term = %Term{positive: true, package_range: package_range}
           incompatibility = Incompatibility.new([term], :no_versions)
@@ -345,7 +340,7 @@ defmodule Resolver do
     end
   end
 
-  defp new_state(registry, locked, overrides) do
+  defp new_state(registry, overrides) do
     version = Version.parse!("1.0.0")
     package_range = %PackageRange{name: "$root", constraint: version}
     root = Incompatibility.new([%Term{positive: false, package_range: package_range}], :root)
@@ -354,7 +349,6 @@ defmodule Resolver do
       solution: %PartialSolution{},
       incompatibilities: %{},
       registry: registry,
-      locked: locked,
       overrides: overrides,
       returned_incompatibilities: %{}
     }

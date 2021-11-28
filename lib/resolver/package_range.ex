@@ -5,13 +5,11 @@ defmodule Resolver.PackageRange do
   defstruct name: nil,
             constraint: nil
 
-  def to_string(%PackageRange{name: "$root"}) do
-    "myapp"
-  end
+  def to_string(%PackageRange{name: "$root"}), do: "myapp"
+  def to_string(%PackageRange{name: "$lock"}), do: "lock"
 
-  def to_string(%PackageRange{name: name, constraint: constraint}) do
-    "#{name}#{constraint(constraint)}"
-  end
+  def to_string(%PackageRange{name: name, constraint: constraint}),
+    do: "#{name}#{constraint(constraint)}"
 
   defp constraint(%Range{min: nil, max: nil}), do: ""
   defp constraint(constraint), do: " #{constraint}"

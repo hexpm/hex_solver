@@ -3,6 +3,7 @@ defmodule Resolver.IntegrationTest do
   use ExUnitProperties
 
   alias Resolver.Registry.Process, as: Registry
+  alias Resolver.Failure
 
   @moduletag :integration
 
@@ -268,15 +269,17 @@ defmodule Resolver.IntegrationTest do
   property "resolves releases" do
     load_registry()
 
-    check all {package, version, dependencies} <- release(), max_runs: 100_000 do
+    check all {package, version, dependencies} <- release() do
       Registry.put("$root", "1.0.0", dependencies)
+      Registry.put("$lock", "1.0.0", [])
 
       cond do
         {package, version} in @expected_failures ->
-          assert {:error, _} = Resolver.run(Registry, %{}, MapSet.new())
+          assert {:error, incompatibility} = Resolver.run(Registry, MapSet.new())
+          assert is_binary(Failure.write(incompatibility))
 
         true ->
-          assert {:ok, _} = Resolver.run(Registry, %{}, MapSet.new())
+          assert {:ok, _} = Resolver.run(Registry, MapSet.new())
       end
     end
   end

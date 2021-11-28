@@ -1,14 +1,12 @@
 defmodule ResolverTest do
-  use ExUnit.Case, async: true
+  use Resolver.Case, async: true
   doctest Resolver
 
   alias Resolver.Constraints.Range
   alias Resolver.Registry.Process, as: Registry
 
-  defp run(locked \\ %{}, overrides \\ []) do
-    locked = Map.new(locked, fn {package, version} -> {package, Version.parse!(version)} end)
-
-    case Resolver.run(Registry, locked, MapSet.new(overrides)) do
+  defp run(overrides \\ []) do
+    case Resolver.run(Registry, MapSet.new(overrides)) do
       {:ok, decisions} ->
         result =
           Map.new(decisions, fn {package, version} ->
@@ -16,7 +14,8 @@ defmodule ResolverTest do
           end)
 
         assert result["$root"] == "1.0.0"
-        Map.delete(result, "$root")
+        assert not Map.has_key?(result, "$lock") or result["$lock"] == "1.0.0"
+        Map.drop(result, ["$root", "$lock"])
 
       {:error, incompatibility} ->
         assert [term] = incompatibility.terms
@@ -226,30 +225,45 @@ defmodule ResolverTest do
 
   describe "run/0 locked" do
     test "dependency" do
-      Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "1.0.0"}])
+      Registry.put("$lock", "1.0.0", [{"foo", "1.0.0", :optional}])
       Registry.put("foo", "1.0.0", [])
 
-      assert run(%{"foo" => "1.0.0"}) == %{"foo" => "1.0.0"}
+      assert run() == %{"foo" => "1.0.0"}
     end
 
-    test "conflict" do
-      Registry.put("$root", "1.0.0", [{"foo", "1.0.0"}])
+    test "conflict 1" do
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "1.0.0"}])
+      Registry.put("$lock", "1.0.0", [{"foo", "2.0.0", :optional}])
       Registry.put("foo", "1.0.0", [])
 
-      assert {:conflict, incompatibility, _} = run(%{"foo" => "2.0.0"})
+      assert {:conflict, incompatibility, _} = run()
       assert [term] = incompatibility.terms
       assert term.package_range.name == "foo"
-      assert term.package_range.constraint == Version.parse!("1.0.0")
+      assert term.package_range.constraint == Version.parse!("2.0.0")
+      assert {:conflict, _, _} = incompatibility.cause
+    end
+
+    test "conflict 2" do
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "2.0.0"}])
+      Registry.put("$lock", "1.0.0", [{"foo", "1.0.0", :optional}])
+      Registry.put("foo", "1.0.0", [])
+
+      assert {:conflict, incompatibility, _} = run()
+      assert [term] = incompatibility.terms
+      assert term.package_range.name == "foo"
+      assert term.package_range.constraint == Version.parse!("2.0.0")
       assert incompatibility.cause == :no_versions
     end
 
     test "downgrade" do
-      Registry.put("$root", "1.0.0", [{"foo", "~> 1.0"}])
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "~> 1.0"}])
+      Registry.put("$lock", "1.0.0", [{"foo", "1.1.0", :optional}])
       Registry.put("foo", "1.0.0", [])
       Registry.put("foo", "1.1.0", [])
       Registry.put("foo", "1.2.0", [])
 
-      assert run(%{"foo" => "1.1.0"}) == %{"foo" => "1.1.0"}
+      assert run() == %{"foo" => "1.1.0"}
     end
   end
 
@@ -262,10 +276,23 @@ defmodule ResolverTest do
     end
 
     test "skip locked optional" do
-      Registry.put("$root", "1.0.0", [{"foo", "1.0.0", :optional}])
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "1.0.0", :optional}])
+      Registry.put("$lock", "1.0.0", [{"foo", "1.0.0", :optional}])
       Registry.put("foo", "1.0.0", [])
 
-      assert run(%{"foo" => "1.1.0"}) == %{}
+      assert run() == %{}
+    end
+
+    test "locked optional conflicts" do
+      Registry.put("$root", "1.0.0", [{"$lock", "1.0.0"}, {"foo", "1.0.0", :optional}])
+      Registry.put("$lock", "1.0.0", [{"foo", "1.1.0", :optional}])
+      Registry.put("foo", "1.0.0", [])
+
+      assert {:conflict, incompatibility, _} = run()
+      assert [term] = incompatibility.terms
+      assert term.package_range.name == "foo"
+      assert term.package_range.constraint == Version.parse!("1.1.0")
+      assert {:conflict, _, _} = incompatibility.cause
     end
 
     test "skip optional with backtrack" do
@@ -319,7 +346,7 @@ defmodule ResolverTest do
       Registry.put("decimal", "1.0.0", [])
       Registry.put("decimal", "2.0.0", [])
 
-      assert {:error, _} = Resolver.run(Registry, %{}, MapSet.new())
+      assert {:conflict, _, _} = run()
     end
   end
 
@@ -330,7 +357,7 @@ defmodule ResolverTest do
       Registry.put("bar", "1.0.0", [])
       Registry.put("bar", "2.0.0", [])
 
-      assert run(%{}, ["bar"]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+      assert run(["bar"]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
     test "ignores compatible constraint" do
@@ -339,7 +366,7 @@ defmodule ResolverTest do
       Registry.put("bar", "1.0.0", [])
       Registry.put("bar", "1.1.0", [])
 
-      assert run(%{}, ["bar"]) == %{"foo" => "1.0.0", "bar" => "1.1.0"}
+      assert run(["bar"]) == %{"foo" => "1.0.0", "bar" => "1.1.0"}
     end
   end
 end

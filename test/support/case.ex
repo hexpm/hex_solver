@@ -134,9 +134,22 @@ defmodule Resolver.Case do
     Version.parse!(string)
   end
 
-  # Registry.put(...)
-  # dependencies = [{"gen_smtp", "~> 1.1.0"}, {"cowboy", "~> 2.7"}]
-  # shrink(dependencies, fn -> Resolver.run(Registry, %{}, MapSet.new()) end)
+  def inspect_incompatibility(incompatibility) do
+    inspect_incompatibility(incompatibility, "")
+  end
+
+  defp inspect_incompatibility(incompatibility, indent) do
+    case incompatibility.cause do
+      {:conflict, left, right} ->
+        IO.puts("#{indent}* #{incompatibility} (conflict)")
+        inspect_incompatibility(left, "  #{indent}")
+        inspect_incompatibility(right, "  #{indent}")
+
+      _ ->
+        IO.puts("#{indent}* #{incompatibility} (#{incompatibility.cause})")
+    end
+  end
+
   def shrink(dependencies, fun) do
     fun = fn ->
       packages = Registry.packages()
@@ -166,7 +179,7 @@ defmodule Resolver.Case do
                 true
 
               {:error, _incompatibility} ->
-                true
+                false
             end
           rescue
             _exception ->
@@ -184,7 +197,7 @@ defmodule Resolver.Case do
 
         nil ->
           IO.puts("FAILED SHRINK TIMEOUT #{package}")
-          # Registry.drop([package])
+          Registry.drop([package])
       end
     end)
   end
@@ -207,7 +220,7 @@ defmodule Resolver.Case do
                   true
 
                 {:error, _incompatibility} ->
-                  true
+                  false
               end
             rescue
               _exception ->
@@ -225,7 +238,7 @@ defmodule Resolver.Case do
 
           nil ->
             IO.puts("FAILED SHRINK TIMEOUT #{package} #{version}")
-            # Registry.drop_version(package, version)
+            Registry.drop_version(package, version)
         end
       end)
     end)

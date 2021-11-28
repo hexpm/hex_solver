@@ -4,27 +4,13 @@ defmodule Resolver.PackageLister do
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
-  def pick_package(registry, locked, package_ranges) do
+  def pick_package(registry, package_ranges) do
     package_range_versions =
       Enum.map(package_ranges, fn package_range ->
         case registry.versions(package_range.name) do
           {:ok, versions} ->
-            # TODO: This wont give a good error message when the lock file
-            #       prevents a solution. Can we treat locked as optional instead
-            #       from a "$lock" package instead?
-            case Map.fetch(locked, package_range.name) do
-              {:ok, version} ->
-                allowed =
-                  if Constraint.allows?(package_range.constraint, version),
-                    do: [version],
-                    else: []
-
-                {package_range, allowed}
-
-              :error ->
-                allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
-                {package_range, allowed}
-            end
+            allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
+            {package_range, allowed}
 
           :error ->
             throw({__MODULE__, :minimal_versions, package_range.name})
@@ -53,6 +39,7 @@ defmodule Resolver.PackageLister do
 
     incompatibilities =
       dependencies
+      |> Enum.sort()
       |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
       |> Enum.reject(fn {dependency, _} ->
         case Map.fetch(already_returned, dependency) do
