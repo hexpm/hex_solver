@@ -1,6 +1,6 @@
-defmodule Resolver.Constraints.Util do
-  alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Version}
+defmodule HexSolver.Constraints.Util do
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.{Empty, Range, Union, Version}
 
   def any(), do: %Range{}
 

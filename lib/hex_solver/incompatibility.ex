@@ -1,7 +1,7 @@
-defmodule Resolver.Incompatibility do
+defmodule HexSolver.Incompatibility do
   import Kernel, except: [to_string: 1]
-  alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
-  alias Resolver.Constraints.Range
+  alias HexSolver.{Constraint, Incompatibility, PackageRange, Term}
+  alias HexSolver.Constraints.Range
 
   defstruct terms: [], cause: nil
 
@@ -360,7 +360,7 @@ defmodule Resolver.Incompatibility do
   defp term_abs(term), do: Term.to_string(%Term{term | positive: true})
 
   defimpl String.Chars do
-    defdelegate to_string(incompatibility), to: Resolver.Incompatibility
+    defdelegate to_string(incompatibility), to: HexSolver.Incompatibility
   end
 
   defimpl Inspect do

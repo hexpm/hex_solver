@@ -1,12 +1,12 @@
-defmodule Resolver.FailureTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.FailureTest do
+  use HexSolver.Case, async: true
 
-  alias Resolver.Failure
-  alias Resolver.Registry.Process, as: Registry
+  alias HexSolver.Failure
+  alias HexSolver.Registry.Process, as: Registry
 
   defp run(dependencies, locked \\ [], overrides \\ []) do
     assert {:error, incompatibility} =
-             Resolver.Resolver.run(
+             HexSolver.Solver.run(
                Registry,
                to_dependencies(dependencies),
                to_locked(locked),

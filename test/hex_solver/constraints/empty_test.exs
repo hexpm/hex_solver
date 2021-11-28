@@ -1,9 +1,9 @@
-defmodule Resolver.Constraints.EmptyTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.Constraints.EmptyTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.Empty
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.Empty
 
   test "any?/1" do
     refute Empty.any?(%Empty{})

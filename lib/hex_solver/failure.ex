@@ -1,5 +1,5 @@
-defmodule Resolver.Failure do
-  alias Resolver.Incompatibility
+defmodule HexSolver.Failure do
+  alias HexSolver.Incompatibility
 
   def write(root) do
     derivations = count_derivations(%{}, root)

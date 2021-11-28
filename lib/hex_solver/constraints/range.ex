@@ -1,8 +1,8 @@
-defmodule Resolver.Constraints.Range do
-  use Resolver.Constraints.Impl
+defmodule HexSolver.Constraints.Range do
+  use HexSolver.Constraints.Impl
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.{Empty, Range, Union, Util, Version}
 
   # %Range{min: nil, max: nil} allows any version.
   # %Range{min: min, max: max, include_min: true, include_max: true}
@@ -438,7 +438,7 @@ defmodule Resolver.Constraints.Range do
   defp include(false), do: ""
 
   defimpl String.Chars do
-    defdelegate to_string(range), to: Resolver.Constraints.Range
+    defdelegate to_string(range), to: HexSolver.Constraints.Range
   end
 
   defimpl Inspect do

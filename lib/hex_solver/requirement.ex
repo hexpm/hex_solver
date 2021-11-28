@@ -1,5 +1,5 @@
-defmodule Resolver.Requirement do
-  alias Resolver.Constraints.{Range, Util, Version}
+defmodule HexSolver.Requirement do
+  alias HexSolver.Constraints.{Range, Util, Version}
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
 

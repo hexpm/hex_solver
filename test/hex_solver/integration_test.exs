@@ -1,8 +1,8 @@
-defmodule Resolver.IntegrationTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.IntegrationTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Registry.Process, as: Registry
+  alias HexSolver.Registry.Process, as: Registry
 
   @moduletag :integration
 
@@ -273,11 +273,12 @@ defmodule Resolver.IntegrationTest do
 
       cond do
         {package, version} in @expected_failures ->
-          assert {:error, incompatibility} = Resolver.Resolver.run(Registry, dependencies, [], [])
-          assert is_binary(Resolver.Failure.write(incompatibility))
+          assert {:error, incompatibility} = HexSolver.Solver.run(Registry, dependencies, [], [])
+
+          assert is_binary(HexSolver.Failure.write(incompatibility))
 
         true ->
-          assert {:ok, _} = Resolver.Resolver.run(Registry, dependencies, [], [])
+          assert {:ok, _} = HexSolver.Solver.run(Registry, dependencies, [], [])
       end
     end
   end

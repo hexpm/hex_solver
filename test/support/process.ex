@@ -1,5 +1,5 @@
-defmodule Resolver.Registry.Process do
-  @behaviour Resolver.Registry
+defmodule HexSolver.Registry.Process do
+  @behaviour HexSolver.Registry
 
   def versions(package) do
     case Process.get({__MODULE__, :versions, package}) do
@@ -23,10 +23,10 @@ defmodule Resolver.Registry.Process do
     dependencies =
       Enum.map(dependencies, fn
         {package, requirement} ->
-          {package, {Resolver.Requirement.to_constraint!(requirement), false}}
+          {package, {HexSolver.Requirement.to_constraint!(requirement), false}}
 
         {package, requirement, :optional} ->
-          {package, {Resolver.Requirement.to_constraint!(requirement), true}}
+          {package, {HexSolver.Requirement.to_constraint!(requirement), true}}
       end)
 
     Process.put({__MODULE__, :versions, package}, versions)

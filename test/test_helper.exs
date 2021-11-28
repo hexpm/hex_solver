@@ -1,3 +1,3 @@
 ExUnit.start()
 
-Resolver.Case.init_registry()
+HexSolver.Case.init_registry()

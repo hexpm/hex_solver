@@ -1,9 +1,9 @@
-defmodule Resolver.RequirementTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.RequirementTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Requirement
-  alias Resolver.Constraints.{Range, Union}
+  alias HexSolver.Requirement
+  alias HexSolver.Constraints.{Range, Union}
 
   describe "to_constraint!/" do
     property "always converts" do

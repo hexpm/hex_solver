@@ -1,12 +1,12 @@
-defmodule Resolver.ResolverTest do
-  use Resolver.Case, async: true
-  doctest Resolver.Resolver
+defmodule HexSolver.SolverTest do
+  use HexSolver.Case, async: true
+  doctest HexSolver.Solver
 
-  alias Resolver.Constraints.Range
-  alias Resolver.Registry.Process, as: Registry
+  alias HexSolver.Constraints.Range
+  alias HexSolver.Registry.Process, as: Registry
 
   defp run(dependencies, locked \\ [], overrides \\ []) do
-    case Resolver.Resolver.run(
+    case HexSolver.Solver.run(
            Registry,
            to_dependencies(dependencies),
            to_locked(locked),

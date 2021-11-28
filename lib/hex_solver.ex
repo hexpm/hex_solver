@@ -1,8 +1,8 @@
-defmodule Resolver do
-  alias Resolver.{Failure, Resolver}
+defmodule HexSolver do
+  alias HexSolver.{Failure, Solver}
 
   def run(registry, dependencies, locked, overrides) do
-    case Resolver.run(registry, dependencies, locked, overrides) do
+    case Solver.run(registry, dependencies, locked, overrides) do
       {:ok, solution} -> {:ok, solution}
       {:error, incompatibility} -> {:error, Failure.write(incompatibility)}
     end

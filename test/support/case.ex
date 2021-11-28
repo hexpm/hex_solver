@@ -1,8 +1,8 @@
-defmodule Resolver.Case do
+defmodule HexSolver.Case do
   use ExUnit.CaseTemplate
-  alias Resolver.{Incompatibility, Requirement}
-  alias Resolver.Constraints.{Empty, Range, Union}
-  alias Resolver.Registry.Process, as: Registry
+  alias HexSolver.{Incompatibility, Requirement}
+  alias HexSolver.Constraints.{Empty, Range, Union}
+  alias HexSolver.Registry.Process, as: Registry
 
   using do
     quote do
@@ -137,16 +137,16 @@ defmodule Resolver.Case do
   def to_dependencies(dependencies) do
     Enum.map(dependencies, fn
       {package, requirement} ->
-        {package, {Resolver.Requirement.to_constraint!(requirement), false}}
+        {package, {HexSolver.Requirement.to_constraint!(requirement), false}}
 
       {package, requirement, :optional} ->
-        {package, {Resolver.Requirement.to_constraint!(requirement), true}}
+        {package, {HexSolver.Requirement.to_constraint!(requirement), true}}
     end)
   end
 
   def to_locked(locked) do
     Enum.map(locked, fn {package, version} ->
-      {package, {Resolver.Requirement.to_constraint!(version), true}}
+      {package, {HexSolver.Requirement.to_constraint!(version), true}}
     end)
   end
 

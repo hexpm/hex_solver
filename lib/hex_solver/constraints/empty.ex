@@ -1,8 +1,8 @@
-defmodule Resolver.Constraints.Empty do
-  use Resolver.Constraints.Impl
+defmodule HexSolver.Constraints.Empty do
+  use HexSolver.Constraints.Impl
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.Empty
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.Empty
 
   defstruct []
 
@@ -37,7 +37,7 @@ defmodule Resolver.Constraints.Empty do
   end
 
   defimpl String.Chars do
-    defdelegate to_string(empty), to: Resolver.Constraints.Empty
+    defdelegate to_string(empty), to: HexSolver.Constraints.Empty
   end
 
   defimpl Inspect do

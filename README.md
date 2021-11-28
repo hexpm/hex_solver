@@ -1,4 +1,4 @@
-# Resolver
+# HexSolver
 
 PubGrub based version solver.
 
@@ -16,17 +16,17 @@ To be used by [Hex](https://github.com/hexpm/hex).
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `resolver` to your list of dependencies in `mix.exs`:
+by adding `hex_solver` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
   [
-    {:resolver, "~> 0.1.0"}
+    {:hex_solver, "~> 0.1.0"}
   ]
 end
 ```
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at <https://hexdocs.pm/resolver>.
+be found at <https://hexdocs.pm/hex_solver>.
 

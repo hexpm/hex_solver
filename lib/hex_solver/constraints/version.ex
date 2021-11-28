@@ -1,10 +1,10 @@
-defmodule Resolver.Constraints.Version do
-  use Resolver.Constraints.Impl, for: Version
+defmodule HexSolver.Constraints.Version do
+  use HexSolver.Constraints.Impl, for: Version
 
   import Kernel, except: [match?: 2]
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Util}
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.{Empty, Range, Union, Util}
 
   def any?(%Version{}), do: false
 

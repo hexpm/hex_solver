@@ -1,8 +1,8 @@
-defmodule Resolver.Constraints.UnionTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.Constraints.UnionTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Constraints.Union
+  alias HexSolver.Constraints.Union
 
   # property "intersect/2" do
   #   check all version1 <- version(),

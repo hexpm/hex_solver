@@ -1,9 +1,9 @@
-defmodule Resolver.Constraints.VersionTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.Constraints.VersionTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Version}
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.{Empty, Range, Union, Version}
 
   property "any?/1" do
     check all version <- version() do

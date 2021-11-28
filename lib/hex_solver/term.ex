@@ -1,6 +1,6 @@
-defmodule Resolver.Term do
-  alias Resolver.{Constraint, PackageRange, Term}
-  alias Resolver.Constraints.Empty
+defmodule HexSolver.Term do
+  alias HexSolver.{Constraint, PackageRange, Term}
+  alias HexSolver.Constraints.Empty
 
   require Logger
 
@@ -103,7 +103,7 @@ defmodule Resolver.Term do
   defp positive(false), do: "not "
 
   defimpl String.Chars do
-    defdelegate to_string(term), to: Resolver.Term
+    defdelegate to_string(term), to: HexSolver.Term
   end
 
   defimpl Inspect do

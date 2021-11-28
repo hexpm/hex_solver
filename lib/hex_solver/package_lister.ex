@@ -1,6 +1,6 @@
-defmodule Resolver.PackageLister do
-  alias Resolver.{Constraint, Incompatibility, PackageLister, PackageRange, Term}
-  alias Resolver.Constraints.{Range, Version}
+defmodule HexSolver.PackageLister do
+  alias HexSolver.{Constraint, Incompatibility, PackageLister, PackageRange, Term}
+  alias HexSolver.Constraints.{Range, Version}
 
   defstruct registry: nil,
             root_dependencies: [],

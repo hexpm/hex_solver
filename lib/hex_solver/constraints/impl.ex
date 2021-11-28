@@ -1,9 +1,9 @@
-defmodule Resolver.Constraints.Impl do
+defmodule HexSolver.Constraints.Impl do
   defmacro __using__(opts) do
     for = Keyword.get(opts, :for, __CALLER__.module)
 
     quote do
-      defimpl Resolver.Constraint, for: unquote(for) do
+      defimpl HexSolver.Constraint, for: unquote(for) do
         def any?(constraint),
           do: unquote(__CALLER__.module).any?(constraint)
 

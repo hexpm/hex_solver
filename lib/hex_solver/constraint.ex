@@ -1,4 +1,4 @@
-defprotocol Resolver.Constraint do
+defprotocol HexSolver.Constraint do
   def any?(constraint)
   def empty?(constraint)
   def allows?(constraint, version)

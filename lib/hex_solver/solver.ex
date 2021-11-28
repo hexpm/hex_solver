@@ -1,5 +1,5 @@
-defmodule Resolver.Resolver do
-  alias Resolver.{
+defmodule HexSolver.Solver do
+  alias HexSolver.{
     Incompatibility,
     PackageLister,
     PackageRange,
@@ -7,7 +7,7 @@ defmodule Resolver.Resolver do
     Term
   }
 
-  alias Resolver.Constraints.Util
+  alias HexSolver.Constraints.Util
 
   require Logger
 

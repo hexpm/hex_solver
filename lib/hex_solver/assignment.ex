@@ -1,5 +1,5 @@
-defmodule Resolver.Assignment do
-  alias Resolver.{Assignment, Term}
+defmodule HexSolver.Assignment do
+  alias HexSolver.{Assignment, Term}
 
   defstruct term: nil,
             decision_level: nil,
@@ -19,7 +19,7 @@ defmodule Resolver.Assignment do
   end
 
   defimpl String.Chars do
-    defdelegate to_string(assignment), to: Resolver.Assignment
+    defdelegate to_string(assignment), to: HexSolver.Assignment
   end
 
   defimpl Inspect do

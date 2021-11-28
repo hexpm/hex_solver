@@ -1,6 +1,6 @@
-defmodule Resolver.PackageRange do
-  alias Resolver.PackageRange
-  alias Resolver.Constraints.Range
+defmodule HexSolver.PackageRange do
+  alias HexSolver.PackageRange
+  alias HexSolver.Constraints.Range
 
   defstruct name: nil,
             constraint: nil
@@ -15,7 +15,7 @@ defmodule Resolver.PackageRange do
   defp constraint(constraint), do: " #{constraint}"
 
   defimpl String.Chars do
-    defdelegate to_string(package_range), to: Resolver.PackageRange
+    defdelegate to_string(package_range), to: HexSolver.PackageRange
   end
 
   defimpl Inspect do

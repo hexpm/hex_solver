@@ -1,5 +1,5 @@
 if Mix.env() == :dev do
-  defmodule Resolver.Dev do
+  defmodule HexSolver.Dev do
     def test_registry() do
       registry =
         Map.new(stream_registry(), fn {package, versions} ->

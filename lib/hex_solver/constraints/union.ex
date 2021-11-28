@@ -1,8 +1,8 @@
-defmodule Resolver.Constraints.Union do
-  use Resolver.Constraints.Impl
+defmodule HexSolver.Constraints.Union do
+  use HexSolver.Constraints.Impl
 
-  alias Resolver.Constraint
-  alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
+  alias HexSolver.Constraint
+  alias HexSolver.Constraints.{Empty, Range, Union, Util, Version}
 
   # We will always work under the following assumptions for unions:
   # * Minimum of two elements
@@ -150,7 +150,7 @@ defmodule Resolver.Constraints.Union do
   end
 
   defimpl String.Chars do
-    defdelegate to_string(union), to: Resolver.Constraints.Union
+    defdelegate to_string(union), to: HexSolver.Constraints.Union
   end
 
   defimpl Inspect do

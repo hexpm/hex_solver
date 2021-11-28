@@ -1,8 +1,8 @@
-defmodule Resolver.Constraints.RangeTest do
-  use Resolver.Case, async: true
+defmodule HexSolver.Constraints.RangeTest do
+  use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias Resolver.Constraints.{Empty, Range, Union, Util, Version}
+  alias HexSolver.Constraints.{Empty, Range, Union, Util, Version}
 
   describe "valid?/1" do
     test "samples" do

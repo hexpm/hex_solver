@@ -1,9 +1,9 @@
-defmodule Resolver.MixProject do
+defmodule HexSolver.MixProject do
   use Mix.Project
 
   def project do
     [
-      app: :resolver,
+      app: :hex_solver,
       version: "0.1.0",
       elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,

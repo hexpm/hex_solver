@@ -1,5 +1,5 @@
-defmodule Resolver.PartialSolution do
-  alias Resolver.{Assignment, PackageRange, PartialSolution, Term}
+defmodule HexSolver.PartialSolution do
+  alias HexSolver.{Assignment, PackageRange, PartialSolution, Term}
 
   require Logger
 
