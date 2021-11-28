@@ -1,13 +1,19 @@
 defmodule Resolver.PackageLister do
-  alias Resolver.{Constraint, Incompatibility, PackageRange, Term}
+  alias Resolver.{Constraint, Incompatibility, PackageLister, PackageRange, Term}
   alias Resolver.Constraints.{Range, Version}
+
+  defstruct registry: nil,
+            root_dependencies: [],
+            locked: [],
+            overrides: [],
+            already_returned: %{}
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
-  def pick_package(registry, package_ranges) do
+  def pick_package(lister, package_ranges) do
     package_range_versions =
       Enum.map(package_ranges, fn package_range ->
-        case registry.versions(package_range.name) do
+        case versions(lister, package_range.name) do
           {:ok, versions} ->
             allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
             {package_range, allowed}
@@ -26,12 +32,20 @@ defmodule Resolver.PackageLister do
       {:error, name}
   end
 
-  def dependencies_as_incompatibilities(registry, already_returned, overrides, package, version) do
-    {:ok, versions} = registry.versions(package)
+  def dependencies_as_incompatibilities(
+        %PackageLister{
+          already_returned: already_returned,
+          overrides: overrides
+        } = lister,
+        package,
+        version
+      ) do
+    {:ok, versions} = versions(lister, package)
+    already_returned = Map.get(already_returned, package, %{})
 
     versions_dependencies =
       Enum.map(versions, fn version ->
-        {:ok, dependencies} = registry.dependencies(package, version)
+        {:ok, dependencies} = dependencies(lister, package, version)
         {version, Map.new(dependencies)}
       end)
 
@@ -87,16 +101,16 @@ defmodule Resolver.PackageLister do
         Map.update(acc, name, constraint, &Constraint.union(&1, constraint))
       end)
 
-    {incompatibilities, already_returned}
+    {put_in(lister.already_returned[package], already_returned), incompatibilities}
   end
 
-  def lower_bound(versions_dependencies, version, constraint) do
+  defp lower_bound(versions_dependencies, version, constraint) do
     [{version, _} | versions_dependencies] = skip_to_version(versions_dependencies, version)
 
     skip_to_last_constraint(versions_dependencies, constraint, version)
   end
 
-  def upper_bound(versions_dependencies, version, constraint) do
+  defp upper_bound(versions_dependencies, version, constraint) do
     versions_dependencies = skip_to_version(versions_dependencies, version)
     skip_to_after_constraint(versions_dependencies, constraint)
   end
@@ -134,5 +148,27 @@ defmodule Resolver.PackageLister do
 
   defp skip_to_after_constraint(_, _constraint) do
     nil
+  end
+
+  @version_1 Elixir.Version.parse!("1.0.0")
+
+  defp versions(_lister, "$root"), do: {:ok, [@version_1]}
+  defp versions(_lister, "$lock"), do: {:ok, [@version_1]}
+  defp versions(%PackageLister{registry: registry}, package), do: registry.versions(package)
+
+  defp dependencies(
+         %PackageLister{root_dependencies: dependencies, locked: locked},
+         "$root",
+         @version_1
+       ) do
+    {:ok, dependencies ++ if(locked == [], do: [], else: [{"$lock", {@version_1, false}}])}
+  end
+
+  defp dependencies(%PackageLister{locked: locked}, "$lock", @version_1) do
+    {:ok, locked}
+  end
+
+  defp dependencies(%PackageLister{registry: registry}, package, version) do
+    registry.dependencies(package, version)
   end
 end

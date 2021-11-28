@@ -134,6 +134,22 @@ defmodule Resolver.Case do
     Version.parse!(string)
   end
 
+  def to_dependencies(dependencies) do
+    Enum.map(dependencies, fn
+      {package, requirement} ->
+        {package, {Resolver.Requirement.to_constraint!(requirement), false}}
+
+      {package, requirement, :optional} ->
+        {package, {Resolver.Requirement.to_constraint!(requirement), true}}
+    end)
+  end
+
+  def to_locked(locked) do
+    Enum.map(locked, fn {package, version} ->
+      {package, {Resolver.Requirement.to_constraint!(version), true}}
+    end)
+  end
+
   def inspect_incompatibility(incompatibility) do
     inspect_incompatibility(incompatibility, "")
   end
