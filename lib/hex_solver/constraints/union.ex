@@ -1,4 +1,6 @@
 defmodule HexSolver.Constraints.Union do
+  @moduledoc false
+
   use HexSolver.Constraints.Impl
 
   alias HexSolver.Constraint

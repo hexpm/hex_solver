@@ -1,4 +1,6 @@
 defmodule HexSolver.Constraints.Range do
+  @moduledoc false
+
   use HexSolver.Constraints.Impl
 
   alias HexSolver.Constraint

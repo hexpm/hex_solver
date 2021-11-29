@@ -1,4 +1,6 @@
 defmodule HexSolver.Incompatibility do
+  @moduledoc false
+
   import Kernel, except: [to_string: 1]
   alias HexSolver.{Constraint, Incompatibility, PackageRange, Term}
   alias HexSolver.Constraints.Range

@@ -1,7 +1,7 @@
 defmodule HexSolver.PartialSolution do
-  alias HexSolver.{Assignment, PackageRange, PartialSolution, Term}
+  @moduledoc false
 
-  require Logger
+  alias HexSolver.{Assignment, PackageRange, PartialSolution, Term}
 
   defstruct assignments: [],
             decisions: %{},

@@ -1,8 +1,17 @@
 defmodule HexSolver.Registry do
-  @type package() :: String.t()
-  @type optional() :: boolean()
+  @moduledoc """
+  The registry is used by the solver to discover package versions and their dependencies.
+  """
 
-  @callback versions(package()) :: {:ok, [Version.t()]} | :error
-  @callback dependencies(package(), Version.t()) ::
-              {:ok, [{Version.t(), HexSolver.Constraint.t(), optional()}]} | :error
+  @doc """
+  Returns all versions of the given package or `:error` if the package does not exist.
+  """
+  @callback versions(HexSolver.package()) :: {:ok, [Version.t()]} | :error
+
+  @doc """
+  Returns all dependencies of the given package version or `:error` if the package or version
+  does not exist.
+  """
+  @callback dependencies(HexSolver.package(), Version.t()) ::
+              {:ok, [HexSolver.dependency()]} | :error
 end

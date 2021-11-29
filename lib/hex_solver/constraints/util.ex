@@ -1,4 +1,6 @@
 defmodule HexSolver.Constraints.Util do
+  @moduledoc false
+
   alias HexSolver.Constraint
   alias HexSolver.Constraints.{Empty, Range, Union, Version}
 

@@ -1,4 +1,6 @@
 defmodule HexSolver.PackageRange do
+  @moduledoc false
+
   alias HexSolver.PackageRange
   alias HexSolver.Constraints.Range
 

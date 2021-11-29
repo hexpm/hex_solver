@@ -1,4 +1,6 @@
 defmodule HexSolver.Constraints.Version do
+  @moduledoc false
+
   use HexSolver.Constraints.Impl, for: Version
 
   import Kernel, except: [match?: 2]

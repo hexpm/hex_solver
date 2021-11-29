@@ -1,4 +1,6 @@
 defmodule HexSolver.Term do
+  @moduledoc false
+
   alias HexSolver.{Constraint, PackageRange, Term}
   alias HexSolver.Constraints.Empty
 

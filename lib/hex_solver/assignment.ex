@@ -1,4 +1,6 @@
 defmodule HexSolver.Assignment do
+  @moduledoc false
+
   alias HexSolver.{Assignment, Term}
 
   defstruct term: nil,

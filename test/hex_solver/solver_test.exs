@@ -1,17 +1,19 @@
 defmodule HexSolver.SolverTest do
   use HexSolver.Case, async: true
-  doctest HexSolver.Solver
 
   alias HexSolver.Constraints.Range
   alias HexSolver.Registry.Process, as: Registry
 
   defp run(dependencies, locked \\ [], overrides \\ []) do
-    case HexSolver.Solver.run(
-           Registry,
-           to_dependencies(dependencies),
-           to_locked(locked),
-           overrides
-         ) do
+    run =
+      HexSolver.Solver.run(
+        Registry,
+        to_dependencies(dependencies),
+        to_locked(locked),
+        overrides
+      )
+
+    case run do
       {:ok, decisions} ->
         result =
           Map.new(decisions, fn {package, version} ->

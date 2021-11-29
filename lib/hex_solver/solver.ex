@@ -1,4 +1,6 @@
 defmodule HexSolver.Solver do
+  @moduledoc false
+
   alias HexSolver.{
     Incompatibility,
     PackageLister,

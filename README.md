@@ -4,8 +4,6 @@ PubGrub based version solver.
 
 To be used by [Hex](https://github.com/hexpm/hex).
 
-**Still in development!**
-
 ### References
 
 * [PubGrub: Next-Generation Version Solving](https://nex3.medium.com/pubgrub-2fb6470504f)

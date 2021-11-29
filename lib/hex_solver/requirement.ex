@@ -1,7 +1,30 @@
 defmodule HexSolver.Requirement do
+  @moduledoc false
+
   alias HexSolver.Constraints.{Range, Util, Version}
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
+
+  def to_constraint(string) when is_binary(string) do
+    case Elixir.Version.parse_requirement(string) do
+      {:ok, requirement} -> to_constraint(requirement)
+      :error -> :error
+    end
+  end
+
+  def to_constraint(%Elixir.Version{} = version) do
+    {:ok, version}
+  end
+
+  def to_constraint(%Elixir.Version.Requirement{} = requirement) do
+    {:ok,
+     requirement.lexed
+     |> Enum.map(fn
+       {major, minor, patch, pre, _} -> {major, minor, patch, pre}
+       other -> other
+     end)
+     |> delex([])}
+  end
 
   def to_constraint!(string) when is_binary(string) do
     string
@@ -9,13 +32,13 @@ defmodule HexSolver.Requirement do
     |> to_constraint!()
   end
 
+  def to_constraint!(%Elixir.Version{} = version) do
+    version
+  end
+
   def to_constraint!(%Elixir.Version.Requirement{} = requirement) do
-    requirement.lexed
-    |> Enum.map(fn
-      {major, minor, patch, pre, _} -> {major, minor, patch, pre}
-      other -> other
-    end)
-    |> delex([])
+    {:ok, constraint} = to_constraint(requirement)
+    constraint
   end
 
   defp delex([], acc) do

@@ -1,4 +1,6 @@
 defmodule HexSolver.PackageLister do
+  @moduledoc false
+
   alias HexSolver.{Constraint, Incompatibility, PackageLister, PackageRange, Term}
   alias HexSolver.Constraints.{Range, Version}
 

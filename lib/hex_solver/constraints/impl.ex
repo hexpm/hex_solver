@@ -1,4 +1,6 @@
 defmodule HexSolver.Constraints.Impl do
+  @moduledoc false
+
   defmacro __using__(opts) do
     for = Keyword.get(opts, :for, __CALLER__.module)
 

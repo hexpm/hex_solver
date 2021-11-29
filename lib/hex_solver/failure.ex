@@ -1,4 +1,6 @@
 defmodule HexSolver.Failure do
+  @moduledoc false
+
   alias HexSolver.Incompatibility
 
   def write(root) do
