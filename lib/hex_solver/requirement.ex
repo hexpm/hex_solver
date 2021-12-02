@@ -2,12 +2,13 @@ defmodule HexSolver.Requirement do
   @moduledoc false
 
   alias HexSolver.Constraints.{Range, Util, Version}
+  alias HexSolver.Requirement.Parser
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
 
   def to_constraint(string) when is_binary(string) do
-    case Elixir.Version.parse_requirement(string) do
-      {:ok, requirement} -> to_constraint(requirement)
+    case Parser.parse(string) do
+      {:ok, lexed} -> {:ok, delex(lexed, [])}
       :error -> :error
     end
   end
@@ -16,21 +17,15 @@ defmodule HexSolver.Requirement do
     {:ok, version}
   end
 
-  # TODO: Vendor requirement lexing
   def to_constraint(%Elixir.Version.Requirement{} = requirement) do
-    {:ok,
-     requirement.lexed
-     |> Enum.map(fn
-       {major, minor, patch, pre, _} -> {major, minor, patch, pre}
-       other -> other
-     end)
-     |> delex([])}
+    to_constraint(to_string(requirement))
   end
 
   def to_constraint!(string) when is_binary(string) do
-    string
-    |> Elixir.Version.parse_requirement!()
-    |> to_constraint!()
+    case Parser.parse(string) do
+      {:ok, lexed} -> delex(lexed, [])
+      :error -> raise Elixir.Version.InvalidRequirementError, string
+    end
   end
 
   def to_constraint!(%Elixir.Version{} = version) do
@@ -38,8 +33,7 @@ defmodule HexSolver.Requirement do
   end
 
   def to_constraint!(%Elixir.Version.Requirement{} = requirement) do
-    {:ok, constraint} = to_constraint(requirement)
-    constraint
+    to_constraint!(to_string(requirement))
   end
 
   defp delex([], acc) do
@@ -64,18 +58,18 @@ defmodule HexSolver.Requirement do
     to_version(version)
   end
 
-  defp to_range(:~>, {major, minor, nil, pre}) do
+  defp to_range(:~>, {major, minor, nil, pre, _build}) do
     %Range{
-      min: to_version({major, minor, 0, pre}),
-      max: to_version({major + 1, 0, 0, [0]}),
+      min: to_version({major, minor, 0, pre, nil}),
+      max: to_version({major + 1, 0, 0, [0], nil}),
       include_min: true
     }
   end
 
-  defp to_range(:~>, {major, minor, patch, pre}) do
+  defp to_range(:~>, {major, minor, patch, pre, _build}) do
     %Range{
-      min: to_version({major, minor, patch, pre}),
-      max: to_version({major, minor + 1, 0, [0]}),
+      min: to_version({major, minor, patch, pre, nil}),
+      max: to_version({major, minor + 1, 0, [0], nil}),
       include_min: true
     }
   end
@@ -142,6 +136,163 @@ defmodule HexSolver.Requirement do
   defp version_max(_left, nil), do: nil
   defp version_max(left, right), do: Version.max(left, right)
 
-  defp to_version({major, minor, patch, pre}),
+  defp to_version({major, minor, patch, pre, _build}),
     do: %Elixir.Version{major: major, minor: minor, patch: patch, pre: pre}
+
+  # Vendored from https://github.com/elixir-lang/elixir/blob/0ff6522/lib/elixir/lib/version.ex#L495
+  defmodule Parser do
+    @moduledoc false
+
+    operators = [
+      {">=", :>=},
+      {"<=", :<=},
+      {"~>", :~>},
+      {">", :>},
+      {"<", :<},
+      {"==", :==},
+      {" or ", :or},
+      {" and ", :and}
+    ]
+
+    def parse(string) do
+      revert_lexed(lexer(string), [])
+    end
+
+    defp lexer(string) do
+      lexer(string, "", [])
+    end
+
+    for {string_op, atom_op} <- operators do
+      defp lexer(unquote(string_op) <> rest, buffer, acc) do
+        lexer(rest, "", [unquote(atom_op) | maybe_prepend_buffer(buffer, acc)])
+      end
+    end
+
+    defp lexer(" " <> rest, buffer, acc) do
+      lexer(rest, "", maybe_prepend_buffer(buffer, acc))
+    end
+
+    defp lexer(<<char::utf8, rest::binary>>, buffer, acc) do
+      lexer(rest, <<buffer::binary, char::utf8>>, acc)
+    end
+
+    defp lexer(<<>>, buffer, acc) do
+      maybe_prepend_buffer(buffer, acc)
+    end
+
+    defp maybe_prepend_buffer("", acc), do: acc
+
+    defp maybe_prepend_buffer(buffer, [head | _] = acc)
+         when is_atom(head) and head not in [:and, :or],
+         do: [buffer | acc]
+
+    defp maybe_prepend_buffer(buffer, acc),
+      do: [buffer, :== | acc]
+
+    defp revert_lexed([version, op, cond | rest], acc)
+         when is_binary(version) and is_atom(op) and cond in [:or, :and] do
+      with {:ok, version} <- validate_requirement(op, version) do
+        revert_lexed(rest, [cond, op, version | acc])
+      end
+    end
+
+    defp revert_lexed([version, op], acc) when is_binary(version) and is_atom(op) do
+      with {:ok, version} <- validate_requirement(op, version) do
+        {:ok, [op, version | acc]}
+      end
+    end
+
+    defp revert_lexed(_rest, _acc), do: :error
+
+    defp validate_requirement(op, version) do
+      case parse_version(version, true) do
+        {:ok, version} when op == :~> -> {:ok, version}
+        {:ok, {_, _, patch, _, _} = version} when is_integer(patch) -> {:ok, version}
+        _ -> :error
+      end
+    end
+
+    defp parse_version(string, approximate?) when is_binary(string) do
+      destructure [version_with_pre, build], String.split(string, "+", parts: 2)
+      destructure [version, pre], String.split(version_with_pre, "-", parts: 2)
+      destructure [major, minor, patch, next], String.split(version, ".")
+
+      with nil <- next,
+           {:ok, major} <- require_digits(major),
+           {:ok, minor} <- require_digits(minor),
+           {:ok, patch} <- maybe_patch(patch, approximate?),
+           {:ok, pre_parts} <- optional_dot_separated(pre),
+           {:ok, pre_parts} <- convert_parts_to_integer(pre_parts, []),
+           {:ok, build_parts} <- optional_dot_separated(build) do
+        {:ok, {major, minor, patch, pre_parts, build_parts}}
+      else
+        _other -> :error
+      end
+    end
+
+    defp require_digits(nil), do: :error
+
+    defp require_digits(string) do
+      if leading_zero?(string), do: :error, else: parse_digits(string, "")
+    end
+
+    defp leading_zero?(<<?0, _, _::binary>>), do: true
+    defp leading_zero?(_), do: false
+
+    defp parse_digits(<<char, rest::binary>>, acc) when char in ?0..?9,
+      do: parse_digits(rest, <<acc::binary, char>>)
+
+    defp parse_digits(<<>>, acc) when byte_size(acc) > 0, do: {:ok, String.to_integer(acc)}
+    defp parse_digits(_, _acc), do: :error
+
+    defp maybe_patch(patch, approximate?)
+    defp maybe_patch(nil, true), do: {:ok, nil}
+    defp maybe_patch(patch, _), do: require_digits(patch)
+
+    defp optional_dot_separated(nil), do: {:ok, []}
+
+    defp optional_dot_separated(string) do
+      parts = String.split(string, ".")
+
+      if Enum.all?(parts, &(&1 != "" and valid_identifier?(&1))) do
+        {:ok, parts}
+      else
+        :error
+      end
+    end
+
+    defp convert_parts_to_integer([part | rest], acc) do
+      case parse_digits(part, "") do
+        {:ok, integer} ->
+          if leading_zero?(part) do
+            :error
+          else
+            convert_parts_to_integer(rest, [integer | acc])
+          end
+
+        :error ->
+          convert_parts_to_integer(rest, [part | acc])
+      end
+    end
+
+    defp convert_parts_to_integer([], acc) do
+      {:ok, Enum.reverse(acc)}
+    end
+
+    defp valid_identifier?(<<char, rest::binary>>)
+         when char in ?0..?9
+         when char in ?a..?z
+         when char in ?A..?Z
+         when char == ?- do
+      valid_identifier?(rest)
+    end
+
+    defp valid_identifier?(<<>>) do
+      true
+    end
+
+    defp valid_identifier?(_other) do
+      false
+    end
+  end
 end
