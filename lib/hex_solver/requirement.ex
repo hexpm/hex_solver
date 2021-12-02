@@ -16,6 +16,7 @@ defmodule HexSolver.Requirement do
     {:ok, version}
   end
 
+  # TODO: Vendor requirement lexing
   def to_constraint(%Elixir.Version.Requirement{} = requirement) do
     {:ok,
      requirement.lexed
@@ -33,7 +34,7 @@ defmodule HexSolver.Requirement do
   end
 
   def to_constraint!(%Elixir.Version{} = version) do
-    version
+    %{version | build: nil}
   end
 
   def to_constraint!(%Elixir.Version.Requirement{} = requirement) do
@@ -103,7 +104,7 @@ defmodule HexSolver.Requirement do
     range1 = to_range(:~>, version1)
     range2 = to_range(op2, version2)
 
-    true = Range.overlapping?(range1, range2)
+    true = Range.allows_any?(range1, range2)
 
     range = %Range{
       min: version_min(range1.min, range2.min),

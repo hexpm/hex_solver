@@ -7,8 +7,8 @@ defmodule HexSolver.Constraints.Util do
   def any(), do: %Range{}
 
   def from_list([]), do: %Empty{}
-  def from_list([single]), do: single
-  def from_list(acc), do: %Union{ranges: acc}
+  def from_list([single]), do: Range.normalize(single)
+  def from_list(acc), do: %Union{ranges: Enum.map(acc, &Range.normalize/1)}
 
   def union(list) do
     list = flatten(list)

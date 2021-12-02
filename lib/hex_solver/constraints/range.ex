@@ -22,28 +22,6 @@ defmodule HexSolver.Constraints.Range do
     end
   end
 
-  def overlapping?(%Range{} = left, %Range{} = right) do
-    case version_compare(left.min, right.max) do
-      :lt ->
-        case version_compare(right.min, left.max) do
-          :lt -> true
-          :eq -> right.include_min or left.include_max
-          :gt -> false
-        end
-
-      :eq ->
-        (left.include_min or right.include_max) and
-          case version_compare(right.min, left.max) do
-            :lt -> true
-            :eq -> right.include_min or left.include_max
-            :gt -> false
-          end
-
-      :gt ->
-        false
-    end
-  end
-
   def any?(%Range{min: nil, max: nil}), do: true
   def any?(%Range{}), do: false
 
@@ -394,6 +372,12 @@ defmodule HexSolver.Constraints.Range do
   defp version_compare(_left, nil), do: :lt
   defp version_compare(left, right), do: Version.compare(left, right)
 
+  def normalize(%Range{min: version, max: version, include_min: true, include_max: true}),
+    do: version
+
+  def normalize(%Range{} = range), do: range
+  def normalize(%Elixir.Version{} = version), do: version
+
   def to_string(%Range{min: nil, max: nil}) do
     "any"
   end
@@ -423,13 +407,13 @@ defmodule HexSolver.Constraints.Range do
   end
 
   def to_string(%Range{min: min, max: max, include_min: include_min, include_max: include_max}) do
-    min = if min, do: ">#{include(include_min)} #{min}"
-    max = if max, do: "<#{include(include_max)} #{max}"
+    min_string = if min, do: ">#{include(include_min)} #{min}"
+    max_string = if max, do: "<#{include(include_max)} #{max}"
 
-    if min && max do
-      "#{min} and #{max}"
+    if min_string && max_string do
+      "#{min_string} and #{max_string}"
     else
-      min || max
+      min_string || max_string
     end
   end
 

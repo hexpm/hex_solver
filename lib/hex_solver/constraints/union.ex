@@ -44,6 +44,8 @@ defmodule HexSolver.Constraints.Union do
   defp do_allows_all?(_lefts, []), do: true
   defp do_allows_all?([], _rights), do: false
 
+  def allows_any?(%Union{}, %Empty{}), do: true
+
   def allows_any?(%Union{} = left, right) do
     do_allows_any?(to_ranges(left), to_ranges(right))
   end
@@ -90,7 +92,7 @@ defmodule HexSolver.Constraints.Union do
 
       true ->
         # Left and right overlaps
-        case Range.difference(left, right) do
+        case maybe_to_range(Range.difference(left, right)) do
           %Union{ranges: [first, last]} ->
             # If right splits left in half, we only need to check future ranges
             # against the latter half
@@ -104,7 +106,7 @@ defmodule HexSolver.Constraints.Union do
             if Range.allows_higher?(range, right) do
               do_difference([range | lefts], rights, acc)
             else
-              do_difference(lefts, rights, [range | acc])
+              do_difference(lefts, [right | rights], [range | acc])
             end
 
           %Empty{} ->
@@ -146,6 +148,9 @@ defmodule HexSolver.Constraints.Union do
   defp to_ranges(%Elixir.Version{} = version), do: [Version.to_range(version)]
   defp to_ranges(%Range{} = range), do: [range]
   defp to_ranges(%Union{ranges: ranges}), do: Enum.map(ranges, &Version.to_range/1)
+
+  defp maybe_to_range(%Elixir.Version{} = version), do: Version.to_range(version)
+  defp maybe_to_range(other), do: other
 
   def to_string(%Union{ranges: ranges}) do
     Enum.map_join(ranges, " or ", &Kernel.to_string/1)
