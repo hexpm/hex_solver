@@ -19,6 +19,9 @@ defmodule HexSolver.Requirement do
 
   def to_constraint(%Elixir.Version.Requirement{} = requirement) do
     to_constraint(to_string(requirement))
+  catch
+    {__MODULE__, :invalid_constraint} ->
+      :error
   end
 
   def to_constraint!(string) when is_binary(string) do
@@ -34,6 +37,9 @@ defmodule HexSolver.Requirement do
 
   def to_constraint!(%Elixir.Version.Requirement{} = requirement) do
     to_constraint!(to_string(requirement))
+  catch
+    {__MODULE__, :invalid_constraint} ->
+      raise Elixir.Version.InvalidRequirementError, to_string(requirement)
   end
 
   defp delex([], acc) do
@@ -98,8 +104,6 @@ defmodule HexSolver.Requirement do
     range1 = to_range(:~>, version1)
     range2 = to_range(op2, version2)
 
-    true = Range.allows_any?(range1, range2)
-
     range = %Range{
       min: version_min(range1.min, range2.min),
       max: version_max(range1.max, range2.max),
@@ -107,25 +111,35 @@ defmodule HexSolver.Requirement do
       include_max: range1.include_max or range2.include_max
     }
 
-    true = Range.valid?(range)
+    unless Range.valid?(range) and Range.allows_any?(range1, range2) do
+      throw({__MODULE__, :invalid_constraint})
+    end
+
     range
   end
 
   defp to_range(op1, version1, op2, version2)
        when op1 in @allowed_range_ops and op2 in @allowed_range_ops do
-    Map.merge(to_range(op1, version1), to_range(op2, version2), fn
-      :__struct__, Range, Range -> Range
-      :min, nil, value -> value
-      :min, value, nil -> value
-      :max, nil, value -> value
-      :max, value, nil -> value
-      :include_min, value, value -> value
-      :include_min, false, value -> value
-      :include_min, value, false -> value
-      :include_max, value, value -> value
-      :include_max, false, value -> value
-      :include_max, value, false -> value
-    end)
+    range =
+      Map.merge(to_range(op1, version1), to_range(op2, version2), fn
+        :__struct__, Range, Range -> Range
+        :min, nil, value -> value
+        :min, value, nil -> value
+        :max, nil, value -> value
+        :max, value, nil -> value
+        :include_min, value, value -> value
+        :include_min, false, value -> value
+        :include_min, value, false -> value
+        :include_max, value, value -> value
+        :include_max, false, value -> value
+        :include_max, value, false -> value
+      end)
+
+    unless Range.valid?(range) do
+      throw({__MODULE__, :invalid_constraint})
+    end
+
+    range
   end
 
   defp version_min(nil, _right), do: nil
