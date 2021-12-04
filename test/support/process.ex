@@ -2,6 +2,10 @@ defmodule HexSolver.Registry.Process do
   @behaviour HexSolver.Registry
 
   def versions(package) do
+    unless package in Process.get({__MODULE__, :prefetch}, []) do
+      raise "not prefetched #{package}"
+    end
+
     case Process.get({__MODULE__, :versions, package}) do
       nil -> :error
       versions -> {:ok, versions}
@@ -9,10 +13,26 @@ defmodule HexSolver.Registry.Process do
   end
 
   def dependencies(package, version) do
+    unless package in Process.get({__MODULE__, :prefetch}, []) do
+      raise "not prefetched #{package}"
+    end
+
     case Process.get({__MODULE__, :dependencies, package, version}) do
       nil -> :error
       dependencies -> {:ok, dependencies}
     end
+  end
+
+  def prefetch(packages) do
+    Enum.each(packages, fn package ->
+      prefetch = Process.get({__MODULE__, :prefetch}, [])
+
+      if package in prefetch do
+        raise "already prefetched #{package}"
+      else
+        Process.put({__MODULE__, :prefetch}, [package | prefetch])
+      end
+    end)
   end
 
   def put(package, version, dependencies) do
@@ -31,6 +51,10 @@ defmodule HexSolver.Registry.Process do
 
     Process.put({__MODULE__, :versions, package}, versions)
     Process.put({__MODULE__, :dependencies, package, version}, dependencies)
+  end
+
+  def reset_prefetch() do
+    Process.delete({__MODULE__, :prefetch})
   end
 
   def keep(packages) do

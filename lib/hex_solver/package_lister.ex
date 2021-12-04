@@ -8,6 +8,7 @@ defmodule HexSolver.PackageLister do
             root_dependencies: [],
             locked: [],
             overrides: [],
+            already_prefetched: MapSet.new(["$lock"]),
             already_returned: %{}
 
   # Prefer packages with few remaining versions so that if there is conflict
@@ -53,7 +54,7 @@ defmodule HexSolver.PackageLister do
 
     {_version, dependencies} = List.keyfind(versions_dependencies, version, 0)
 
-    incompatibilities =
+    dependencies =
       dependencies
       |> Enum.sort()
       |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
@@ -63,6 +64,9 @@ defmodule HexSolver.PackageLister do
           :error -> false
         end
       end)
+
+    incompatibilities =
+      dependencies
       |> Enum.map(fn {dependency, {constraint, optional}} ->
         version_constraints =
           Enum.map(versions_dependencies, fn {version, dependencies} ->
@@ -90,6 +94,11 @@ defmodule HexSolver.PackageLister do
         Incompatibility.new([package_term, dependency_term], :dependency)
       end)
 
+    prefetch =
+      dependencies
+      |> MapSet.new(fn {dependency, _} -> dependency end)
+      |> MapSet.difference(lister.already_prefetched)
+
     already_returned =
       Enum.reduce(incompatibilities, already_returned, fn incompatibility, acc ->
         [package_term, dependency_term] =
@@ -103,7 +112,15 @@ defmodule HexSolver.PackageLister do
         Map.update(acc, name, constraint, &Constraint.union(&1, constraint))
       end)
 
-    {put_in(lister.already_returned[package], already_returned), incompatibilities}
+    lister.registry.prefetch(Enum.to_list(prefetch))
+
+    lister = %{
+      lister
+      | already_prefetched: MapSet.union(lister.already_prefetched, prefetch),
+        already_returned: Map.put(lister.already_returned, package, already_returned)
+    }
+
+    {lister, incompatibilities}
   end
 
   defp lower_bound(versions_dependencies, version, constraint) do

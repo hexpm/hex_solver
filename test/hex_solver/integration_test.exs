@@ -269,6 +269,7 @@ defmodule HexSolver.IntegrationTest do
     load_registry()
 
     check all {package, version, dependencies} <- release() do
+      Registry.reset_prefetch()
       dependencies = to_dependencies(dependencies)
 
       cond do

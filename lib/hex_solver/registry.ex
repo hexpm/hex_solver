@@ -14,4 +14,10 @@ defmodule HexSolver.Registry do
   """
   @callback dependencies(HexSolver.package(), Version.t()) ::
               {:ok, [HexSolver.dependency()]} | :error
+
+  @doc """
+  Called when the solver first discovers a set of packages so that the registry can be lazily
+  preloaded.
+  """
+  @callback prefetch([HexSolver.package()]) :: :ok
 end
