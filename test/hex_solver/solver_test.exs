@@ -361,5 +361,16 @@ defmodule HexSolver.SolverTest do
                "bar" => "1.1.0"
              }
     end
+
+    test "skips overridden dependency outside of the root" do
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}])
+      Registry.put("baz", "1.0.0", [])
+
+      assert run([{"foo", "1.0.0"}], [], ["baz"]) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0"
+             }
+    end
   end
 end
