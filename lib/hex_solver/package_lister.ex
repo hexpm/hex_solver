@@ -112,7 +112,9 @@ defmodule HexSolver.PackageLister do
         Map.update(acc, name, constraint, &Constraint.union(&1, constraint))
       end)
 
-    lister.registry.prefetch(Enum.to_list(prefetch))
+    if MapSet.size(prefetch) > 0 do
+      lister.registry.prefetch(Enum.to_list(prefetch))
+    end
 
     lister = %{
       lister
