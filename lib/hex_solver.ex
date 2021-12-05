@@ -3,9 +3,10 @@ defmodule HexSolver do
   A version solver.
   """
 
-  @type dependency() :: {package(), constraint(), optional()}
+  @type dependency() :: {package(), constraint(), optional(), label()}
   @type locked() :: {package(), Version.t()}
   @type package() :: String.t()
+  @type label() :: String.t()
   @type optional() :: boolean()
   @opaque constraint() :: HexSolver.Requirement.t()
 
@@ -17,10 +18,16 @@ defmodule HexSolver do
   Takes a `HexSolver.Registry` implementation, a list of root dependencies, a list of locked
   package versions, and a list of packages that are overridden by the root dependencies.
 
-  Returns a map of packages and their selected versions or an human readable explanation of
+  Locked dependencies are treated as optional dependencies with a single version as
+  their constraint.
+
+  The overrides are a set of labels. If a dependency with a matching label is declared the
+  solver will ignore that dependency unless it's a root dependency.
+
+  Returns a map of packages and their selected versions or a human readable explanation of
   why a solution could not be found.
   """
-  @spec run(module(), [dependency()], [locked()], [package()]) ::
+  @spec run(module(), [dependency()], [locked()], [label()]) ::
           {:ok, %{package() => Version.t()}} | {:error, String.t()}
   def run(registry, dependencies, locked, overrides) do
     case Solver.run(registry, dependencies, locked, overrides) do

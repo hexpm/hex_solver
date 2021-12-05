@@ -43,10 +43,12 @@ defmodule HexSolver.Registry.Process do
     dependencies =
       Enum.map(dependencies, fn
         {package, requirement} ->
-          {package, {HexSolver.Requirement.to_constraint!(requirement), false}}
+          {package, HexSolver.Requirement.to_constraint!(requirement), false, package}
 
-        {package, requirement, :optional} ->
-          {package, {HexSolver.Requirement.to_constraint!(requirement), true}}
+        {package, requirement, opts} ->
+          optional = Keyword.get(opts, :optional, false)
+          label = Keyword.get(opts, :label, package)
+          {package, HexSolver.Requirement.to_constraint!(requirement), optional, label}
       end)
 
     Process.put({__MODULE__, :versions, package}, versions)
@@ -173,12 +175,8 @@ defmodule HexSolver.Registry.Process do
     Enum.each(Process.get(), fn
       {{__MODULE__, :dependencies, package, version}, dependencies} ->
         dependencies =
-          Enum.map(dependencies, fn {package, {requirement, optional}} ->
-            if optional do
-              {package, to_string(requirement), :optional}
-            else
-              {package, to_string(requirement)}
-            end
+          Enum.map(dependencies, fn {package, requirement, optional, label} ->
+            {package, to_string(requirement), optional: optional, label: label}
           end)
 
         IO.puts(

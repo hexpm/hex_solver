@@ -257,20 +257,20 @@ defmodule HexSolver.SolverTest do
     test "skip single optional" do
       Registry.put("foo", "1.0.0", [])
 
-      assert run([{"foo", "1.0.0", :optional}]) == %{}
+      assert run([{"foo", "1.0.0", optional: true}]) == %{}
     end
 
     test "skip locked optional" do
       Registry.put("foo", "1.0.0", [])
 
-      assert run([{"foo", "1.0.0", :optional}], [{"foo", "1.0.0"}]) == %{}
+      assert run([{"foo", "1.0.0", optional: true}], [{"foo", "1.0.0"}]) == %{}
     end
 
     test "locked optional conflicts" do
       Registry.put("foo", "1.0.0", [])
 
       assert {:conflict, incompatibility, _} =
-               run([{"foo", "1.0.0", :optional}], [{"foo", "1.1.0"}])
+               run([{"foo", "1.0.0", optional: true}], [{"foo", "1.1.0"}])
 
       assert [term] = incompatibility.terms
       assert term.package_range.name == "foo"
@@ -280,11 +280,11 @@ defmodule HexSolver.SolverTest do
 
     test "skip optional with backtrack" do
       Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}, {"opt", "1.0.0"}])
-      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", optional: true}])
       Registry.put("bar", "1.1.0", [{"baz", "1.1.0"}, {"opt", "1.0.0"}])
-      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", optional: true}])
       Registry.put("baz", "1.1.0", [{"opt", "1.0.0"}])
-      Registry.put("baz", "1.0.0", [{"opt", "1.0.0", :optional}])
+      Registry.put("baz", "1.0.0", [{"opt", "1.0.0", optional: true}])
       Registry.put("opt", "1.0.0", [])
 
       assert run([{"foo", "~> 1.0"}]) == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
@@ -294,7 +294,7 @@ defmodule HexSolver.SolverTest do
       Registry.put("foo", "1.0.0", [])
       Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])
 
-      assert run([{"foo", "1.0.0", :optional}, {"bar", "1.0.0"}]) == %{
+      assert run([{"foo", "1.0.0", optional: true}, {"bar", "1.0.0"}]) == %{
                "foo" => "1.0.0",
                "bar" => "1.0.0"
              }
@@ -305,7 +305,7 @@ defmodule HexSolver.SolverTest do
       Registry.put("foo", "1.1.0", [])
       Registry.put("bar", "1.0.0", [{"foo", "~> 1.0"}])
 
-      assert run([{"foo", "~> 1.0.0", :optional}, {"bar", "1.0.0"}]) == %{
+      assert run([{"foo", "~> 1.0.0", optional: true}, {"bar", "1.0.0"}]) == %{
                "foo" => "1.0.0",
                "bar" => "1.0.0"
              }
@@ -313,10 +313,10 @@ defmodule HexSolver.SolverTest do
 
     test "select optional with backtrack" do
       Registry.put("foo", "1.1.0", [{"bar", "1.1.0"}, {"baz", "1.0.0"}, {"opt", "1.0.0"}])
-      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", :optional}])
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"opt", "1.0.0", optional: true}])
       Registry.put("bar", "1.1.0", [{"baz", "1.1.0"}, {"opt", "1.0.0"}])
-      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", :optional}])
-      Registry.put("baz", "1.1.0", [{"opt", "1.0.0", :optional}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0"}, {"opt", "1.0.0", optional: true}])
+      Registry.put("baz", "1.1.0", [{"opt", "1.0.0", optional: true}])
       Registry.put("baz", "1.0.0", [{"opt", "1.0.0"}])
       Registry.put("opt", "1.0.0", [])
 
@@ -329,7 +329,7 @@ defmodule HexSolver.SolverTest do
     end
 
     test "with conflict" do
-      Registry.put("poison", "1.0.0", [{"decimal", "~> 2.0", :optional}])
+      Registry.put("poison", "1.0.0", [{"decimal", "~> 2.0", optional: true}])
       Registry.put("postgrex", "1.0.0", [{"decimal", "~> 1.0"}])
       Registry.put("ex_crypto", "1.0.0", [{"poison", ">= 1.0.0"}])
       Registry.put("decimal", "1.0.0", [])
@@ -370,6 +370,18 @@ defmodule HexSolver.SolverTest do
       assert run([{"foo", "1.0.0"}], [], ["baz"]) == %{
                "foo" => "1.0.0",
                "bar" => "1.0.0"
+             }
+    end
+
+    test "don't skip overridden dependency outside of the root when label doesn't match" do
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0", label: "not-baz"}])
+      Registry.put("baz", "1.0.0", [])
+
+      assert run([{"foo", "1.0.0"}], [], ["baz"]) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0",
+               "baz" => "1.0.0"
              }
     end
   end

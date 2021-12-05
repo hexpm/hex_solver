@@ -45,11 +45,9 @@ defmodule HexSolver.Case do
           {version, dependencies} <- versions do
         dependencies =
           Enum.map(dependencies, fn {package, dependency} ->
-            if dependency["optional"] do
-              {package, dependency["requirement"], :optional}
-            else
-              {package, dependency["requirement"]}
-            end
+            optional = Map.get(dependency, "optional", false)
+            label = Map.get(dependency, "app", package)
+            {package, dependency["requirement"], optional: optional, label: label}
           end)
 
         {package, version, dependencies}
@@ -137,16 +135,18 @@ defmodule HexSolver.Case do
   def to_dependencies(dependencies) do
     Enum.map(dependencies, fn
       {package, requirement} ->
-        {package, {HexSolver.Requirement.to_constraint!(requirement), false}}
+        {package, HexSolver.Requirement.to_constraint!(requirement), false, package}
 
-      {package, requirement, :optional} ->
-        {package, {HexSolver.Requirement.to_constraint!(requirement), true}}
+      {package, requirement, opts} ->
+        optional = Keyword.get(opts, :optional, false)
+        label = Keyword.get(opts, :label, package)
+        {package, HexSolver.Requirement.to_constraint!(requirement), optional, label}
     end)
   end
 
   def to_locked(locked) do
     Enum.map(locked, fn {package, version} ->
-      {package, {HexSolver.Requirement.to_constraint!(version), true}}
+      {package, HexSolver.Requirement.to_constraint!(version)}
     end)
   end
 

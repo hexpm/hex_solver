@@ -49,7 +49,7 @@ defmodule HexSolver.PackageLister do
     versions_dependencies =
       Enum.map(versions, fn version ->
         {:ok, dependencies} = dependencies(lister, package, version)
-        {version, Map.new(dependencies)}
+        {version, dependencies}
       end)
 
     {_version, dependencies} = List.keyfind(versions_dependencies, version, 0)
@@ -57,7 +57,9 @@ defmodule HexSolver.PackageLister do
     dependencies =
       dependencies
       |> Enum.sort()
-      |> Enum.reject(fn {dependency, _} -> dependency in overrides and package != "$root" end)
+      |> Enum.reject(fn {_dependency, {_constraint, _optional, label}} ->
+        package != "$root" and label in overrides
+      end)
       |> Enum.reject(fn {dependency, _} ->
         case Map.fetch(already_returned, dependency) do
           {:ok, returned_constraint} -> Constraint.allows?(returned_constraint, version)
@@ -67,7 +69,7 @@ defmodule HexSolver.PackageLister do
 
     incompatibilities =
       dependencies
-      |> Enum.map(fn {dependency, {constraint, optional}} ->
+      |> Enum.map(fn {dependency, {constraint, optional, _label}} ->
         version_constraints =
           Enum.map(versions_dependencies, fn {version, dependencies} ->
             {version, dependencies[dependency]}
@@ -182,14 +184,24 @@ defmodule HexSolver.PackageLister do
          "$root",
          @version_1
        ) do
-    {:ok, dependencies ++ if(locked == [], do: [], else: [{"$lock", {@version_1, false}}])}
+    lock_dependency = if locked == [], do: [], else: [{"$lock", @version_1, false, "$lock"}]
+    {:ok, dependency_map(lock_dependency ++ dependencies)}
   end
 
   defp dependencies(%PackageLister{locked: locked}, "$lock", @version_1) do
-    {:ok, locked}
+    {:ok, Map.new(locked, fn {package, version} -> {package, {version, true, package}} end)}
   end
 
   defp dependencies(%PackageLister{registry: registry}, package, version) do
-    registry.dependencies(package, version)
+    case registry.dependencies(package, version) do
+      {:ok, dependencies} -> {:ok, dependency_map(dependencies)}
+      :error -> :error
+    end
+  end
+
+  defp dependency_map(dependencies) do
+    Map.new(dependencies, fn {package, version, optional, label} ->
+      {package, {version, optional, label}}
+    end)
   end
 end
