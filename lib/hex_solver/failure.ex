@@ -3,14 +3,21 @@ defmodule HexSolver.Failure do
 
   alias HexSolver.Incompatibility
 
-  def write(root) do
+  def write(root, opts \\ []) do
     derivations = count_derivations(%{}, root)
-    state = state(root, derivations)
+    state = state(root, derivations, opts)
 
     state =
       case root.cause do
-        {:conflict, _, _} -> visit(state, root)
-        _ -> write(state, root, false, "Because #{root}, version solving failed.")
+        {:conflict, _, _} ->
+          visit(state, root)
+
+        _ ->
+          write(state, root, false, [
+            "Because ",
+            Incompatibility.to_string(root, ansi: state.ansi),
+            " version solving failed."
+          ])
       end
 
     numbers =
@@ -54,7 +61,7 @@ defmodule HexSolver.Failure do
   defp visit(state, incompatibility, conclusion? \\ false) do
     numbered? = conclusion? or Map.fetch!(state.derivations, incompatibility) > 1
     conjunction = if conclusion? or incompatibility == state.root, do: "So,", else: "And"
-    incompatibility_string = to_string(incompatibility)
+    incompatibility_string = Incompatibility.to_string(incompatibility, ansi: state.ansi)
     {:conflict, conflict, other} = incompatibility.cause
 
     case {conflict.cause, other.cause} do
@@ -68,7 +75,11 @@ defmodule HexSolver.Failure do
           conflict_line && other_line ->
             write(state, incompatibility, numbered?, [
               "Because ",
-              Incompatibility.to_string_and(conflict, other, conflict_line, other_line),
+              Incompatibility.to_string_and(conflict, other,
+                left_line: conflict_line,
+                right_line: other_line,
+                ansi: state.ansi
+              ),
               ", ",
               incompatibility_string
             ])
@@ -85,7 +96,9 @@ defmodule HexSolver.Failure do
             |> visit(without_line)
             |> write(incompatibility, numbered?, [
               conjunction,
-              " because #{with_line} (#{line}), ",
+              " because ",
+              Incompatibility.to_string(with_line, ansi: state.ansi),
+              " (#{line}), ",
               incompatibility_string
             ])
 
@@ -106,7 +119,8 @@ defmodule HexSolver.Failure do
             |> write(incompatibility, numbered?, fn state ->
               [
                 conjunction,
-                " because #{conflict}",
+                " because ",
+                Incompatibility.to_string(conflict, ansi: state.ansi),
                 maybe_line(state.line_numbers[conflict]),
                 ", ",
                 incompatibility_string,
@@ -123,7 +137,10 @@ defmodule HexSolver.Failure do
           derived_line = state.line_numbers[derived] ->
             write(state, incompatibility, numbered?, [
               "Because ",
-              Incompatibility.to_string_and(ext, derived, nil, derived_line),
+              Incompatibility.to_string_and(ext, derived,
+                right_line: derived_line,
+                ansi: state.ansi
+              ),
               ", ",
               incompatibility_string
             ])
@@ -146,7 +163,7 @@ defmodule HexSolver.Failure do
             |> write(incompatibility, numbered?, [
               conjunction,
               " because ",
-              Incompatibility.to_string_and(collapsed_ext, ext),
+              Incompatibility.to_string_and(collapsed_ext, ext, ansi: state.ansi),
               ", ",
               incompatibility_string,
               "."
@@ -157,7 +174,9 @@ defmodule HexSolver.Failure do
             |> visit(derived)
             |> write(incompatibility, numbered?, [
               conjunction,
-              " because #{ext}, ",
+              " because ",
+              Incompatibility.to_string(ext, ansi: state.ansi),
+              ", ",
               incompatibility_string,
               "."
             ])
@@ -166,7 +185,7 @@ defmodule HexSolver.Failure do
       _ ->
         write(state, incompatibility, numbered?, [
           "Because ",
-          Incompatibility.to_string_and(conflict, other),
+          Incompatibility.to_string_and(conflict, other, ansi: state.ansi),
           ", ",
           incompatibility_string,
           "."
@@ -223,12 +242,13 @@ defmodule HexSolver.Failure do
 
   defp single_line?({:conflict, %Incompatibility{}, %Incompatibility{}}), do: false
 
-  defp state(root, derivations) do
+  defp state(root, derivations, opts) do
     %{
       root: root,
       lines: [],
       line_numbers: %{},
-      derivations: derivations
+      derivations: derivations,
+      ansi: Keyword.get(opts, :ansi, false)
     }
   end
 end

@@ -72,7 +72,10 @@ defmodule HexSolver.PackageLister do
       |> Enum.map(fn {dependency, {constraint, optional, _label}} ->
         version_constraints =
           Enum.map(versions_dependencies, fn {version, dependencies} ->
-            {version, dependencies[dependency]}
+            case Map.fetch(dependencies, dependency) do
+              {:ok, {constraint, optional, _label}} -> {version, {constraint, optional}}
+              :error -> {version, nil}
+            end
           end)
 
         # Find range of versions around the current version for which the
@@ -146,7 +149,11 @@ defmodule HexSolver.PackageLister do
     skip_to_version(versions_dependencies, version)
   end
 
-  defp skip_to_last_constraint([{version, constraint} | versions_dependencies], constraint, _last) do
+  defp skip_to_last_constraint(
+         [{version, constraint} | versions_dependencies],
+         {_constraint, _optional} = constraint,
+         _last
+       ) do
     skip_to_last_constraint(versions_dependencies, constraint, version)
   end
 
@@ -160,7 +167,7 @@ defmodule HexSolver.PackageLister do
 
   defp skip_to_after_constraint(
          [{_, constraint}, {version, constraint} | versions_dependencies],
-         constraint
+         {_constraint, _optional} = constraint
        ) do
     skip_to_after_constraint([{version, constraint} | versions_dependencies], constraint)
   end

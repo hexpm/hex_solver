@@ -25,8 +25,8 @@ defmodule HexSolverTest do
       assert run([{"foo", "~> 1.0"}]) ==
                {:error,
                 """
-                Because every version of foo depends on bar ~> 1.0 which doesn't match any versions, no version of foo is allowed.
-                So, because myapp depends on foo ~> 1.0, version solving failed.\
+                Because every version of "foo" depends on "bar ~> 1.0" which doesn't match any versions, no version of "foo" is allowed.
+                So, because "your app" depends on "foo ~> 1.0", version solving failed.\
                 """}
     end
   end

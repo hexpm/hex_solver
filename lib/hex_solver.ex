@@ -26,13 +26,18 @@ defmodule HexSolver do
 
   Returns a map of packages and their selected versions or a human readable explanation of
   why a solution could not be found.
+
+  ## Options
+
+    * `:ansi` - If `true` adds ANSI formatting to the failure message (Default: `false`)
+
   """
-  @spec run(module(), [dependency()], [locked()], [label()]) ::
+  @spec run(module(), [dependency()], [locked()], [label()], ansi: boolean()) ::
           {:ok, %{package() => Version.t()}} | {:error, String.t()}
-  def run(registry, dependencies, locked, overrides) do
+  def run(registry, dependencies, locked, overrides, opts \\ []) do
     case Solver.run(registry, dependencies, locked, overrides) do
       {:ok, solution} -> {:ok, Map.drop(solution, ["$root", "$lock"])}
-      {:error, incompatibility} -> {:error, Failure.write(incompatibility)}
+      {:error, incompatibility} -> {:error, Failure.write(incompatibility, opts)}
     end
   end
 

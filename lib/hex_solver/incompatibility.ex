@@ -47,129 +47,144 @@ defmodule HexSolver.Incompatibility do
 
   def failure?(%Incompatibility{}), do: false
 
-  def to_string(%Incompatibility{
-        cause: :dependency,
-        terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
-      })
+  def to_string(incompatibilty, opts \\ [])
+
+  def to_string(
+        %Incompatibility{
+          cause: :dependency,
+          terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
+        },
+        opts
+      )
       when depender.package_range.name == "$lock" do
-    "lock specifies #{term_abs(dependee)}"
+    "\"lock\" specifies #{bright_term_abs(dependee, opts)}"
   end
 
-  def to_string(%Incompatibility{
-        cause: :dependency,
-        terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
-      }) do
-    "#{terse_every(depender)} depends on #{term_abs(dependee)}"
+  def to_string(
+        %Incompatibility{
+          cause: :dependency,
+          terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
+        },
+        opts
+      ) do
+    "#{terse_every(depender, opts)} depends on #{bright_term_abs(dependee, opts)}"
   end
 
-  def to_string(%Incompatibility{cause: :no_versions, terms: terms}) do
+  def to_string(%Incompatibility{cause: :no_versions, terms: terms}, opts) do
     [%Term{positive: true} = term] = terms
-    "no versions of #{package_name(term)} match #{term.package_range.constraint}"
+
+    "no versions of #{package_name(term, opts)} match #{bright(term.package_range.constraint, opts)}"
   end
 
-  def to_string(%Incompatibility{cause: :package_not_found, terms: terms}) do
+  def to_string(%Incompatibility{cause: :package_not_found, terms: terms}, opts) do
     [%Term{positive: true} = term] = terms
-    "#{package_name(term)} doesn't exist"
+    "#{package_name(term, opts)} doesn't exist"
   end
 
-  def to_string(%Incompatibility{cause: :root, terms: terms}) do
+  def to_string(%Incompatibility{cause: :root, terms: terms}, opts) do
     [%Term{positive: false} = term] = terms
-    "#{package_name(term)} is #{term.package_range.constraint}"
+    "#{package_name(term, opts)} is #{bright(term.package_range.constraint, opts)}"
   end
 
-  def to_string(%Incompatibility{terms: []}) do
+  def to_string(%Incompatibility{terms: []}, _opts) do
     "version solving failed"
   end
 
-  def to_string(%Incompatibility{terms: [%Term{package_range: %PackageRange{name: "$root"}}]}) do
+  def to_string(
+        %Incompatibility{terms: [%Term{package_range: %PackageRange{name: "$root"}}]},
+        _opts
+      ) do
     "version solving failed"
   end
 
-  def to_string(%Incompatibility{
-        terms: [
-          %Term{
-            positive: true,
-            package_range: %PackageRange{constraint: %Range{min: nil, max: nil}}
-          } = term
-        ]
-      }) do
-    "no version of #{package_name(term)} is allowed"
+  def to_string(
+        %Incompatibility{
+          terms: [
+            %Term{
+              positive: true,
+              package_range: %PackageRange{constraint: %Range{min: nil, max: nil}}
+            } = term
+          ]
+        },
+        opts
+      ) do
+    "no version of #{package_name(term, opts)} is allowed"
   end
 
-  def to_string(%Incompatibility{terms: [%Term{positive: true} = term]}) do
-    "#{terse_name(term)} is forbidden"
+  def to_string(%Incompatibility{terms: [%Term{positive: true} = term]}, opts) do
+    "#{terse_name(term, opts)} is forbidden"
   end
 
-  def to_string(%Incompatibility{terms: [%Term{positive: false} = term]}) do
-    "#{terse_name(%Term{term | positive: true})} is required"
+  def to_string(%Incompatibility{terms: [%Term{positive: false} = term]}, opts) do
+    "#{terse_name(%Term{term | positive: true}, opts)} is required"
   end
 
-  def to_string(%Incompatibility{terms: [left, right]}) when left.positive == right.positive do
+  def to_string(%Incompatibility{terms: [left, right]}, opts)
+      when left.positive == right.positive do
     if left.positive do
-      "#{terse_name(%Term{left | positive: true})} is incompatible with #{terse_name(%Term{right | positive: true})}"
+      "#{terse_name(term_abs(left), opts)} is incompatible with #{terse_name(term_abs(right), opts)}"
     else
-      "either #{term_abs(left)} or #{term_abs(right)}"
+      "either #{bright_term_abs(left, opts)} or #{bright_term_abs(right, opts)}"
     end
   end
 
-  def to_string(%Incompatibility{terms: terms}) do
+  def to_string(%Incompatibility{terms: terms}, opts) do
     {positive, negative} = Enum.split_with(terms, & &1.positive)
 
     cond do
       positive != [] and negative != [] ->
         case positive do
           [term] ->
-            "#{term_abs(term)} requires #{Enum.map_join(negative, " or ", &term_abs/1)}"
+            "#{bright_term_abs(term, opts)} requires #{Enum.map_join(negative, " or ", &bright_term_abs(&1, opts))}"
 
           _ ->
-            "if #{Enum.map_join(positive, " and ", &term_abs/1)} then #{Enum.map_join(negative, " or ", &term_abs/1)}"
+            "if #{Enum.map_join(positive, " and ", &bright_term_abs(&1, opts))} then #{Enum.map_join(negative, " or ", &bright_term_abs(&1, opts))}"
         end
 
       positive != [] ->
-        "one of #{Enum.map_join(positive, " or ", &term_abs/1)} must be false"
+        "one of #{Enum.map_join(positive, " or ", &bright_term_abs(&1, opts))} must be false"
 
       negative != [] ->
-        "one of #{Enum.map_join(negative, " or ", &term_abs/1)} must be true"
+        "one of #{Enum.map_join(negative, " or ", &bright_term_abs(&1, opts))} must be true"
     end
   end
 
-  def to_string_and(left, right, left_line \\ nil, right_line \\ nil)
+  def to_string_and(left, right, opts \\ [])
 
   def to_string_and(
         %Incompatibility{terms: [lock, _dependency], cause: :dependency} = left,
         %Incompatibility{terms: [root, lock_dependency], cause: :dependency},
-        _left_line,
-        _right_line
+        opts
       )
       when root.package_range.name == "$root" and lock_dependency.package_range.name == "$lock" and
              lock.package_range.name == "$lock" do
-    to_string(left)
+    to_string(left, opts)
   end
 
-  def to_string_and(%Incompatibility{} = left, %Incompatibility{} = right, left_line, right_line) do
+  def to_string_and(%Incompatibility{} = left, %Incompatibility{} = right, opts) do
     cond do
-      requires_both = try_requires_both(left, right, left_line, right_line) ->
+      requires_both = try_requires_both(left, right, opts) ->
         requires_both
 
-      requires_through = try_requires_through(left, right, left_line, right_line) ->
+      requires_through = try_requires_through(left, right, opts) ->
         requires_through
 
-      requires_forbidden = try_requires_forbidden(left, right, left_line, right_line) ->
+      requires_forbidden = try_requires_forbidden(left, right, opts) ->
         requires_forbidden
 
       true ->
         [
-          to_string(left),
-          maybe_line(left_line),
+          to_string(left, opts),
+          maybe_line(opts[:left_line]),
           " and ",
-          to_string(right),
-          maybe_line(right_line)
+          to_string(right, opts),
+          maybe_line(opts[:right_line])
         ]
     end
     |> IO.chardata_to_string()
   end
 
-  defp try_requires_both(left, right, left_line, right_line) do
+  defp try_requires_both(left, right, opts) do
     if length(left.terms) == 1 or length(right.terms) == 1 do
       throw({__MODULE__, :try_requires_both})
     end
@@ -185,31 +200,31 @@ defmodule HexSolver.Incompatibility do
     left_negatives =
       left.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &term_abs/1)
+      |> Enum.map_join(" or ", &bright_term_abs(&1, opts))
 
     right_negatives =
       right.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &term_abs/1)
+      |> Enum.map_join(" or ", &bright_term_abs(&1, opts))
 
     dependency? = left.cause == :dependency and right.cause == :dependency
 
     [
-      terse_every(left_positive),
+      terse_every(left_positive, opts),
       " ",
       cause_verb(dependency?),
       " both ",
       left_negatives,
-      maybe_line(left_line),
+      maybe_line(opts[:left_line]),
       " and ",
       right_negatives,
-      maybe_line(right_line)
+      maybe_line(opts[:right_line])
     ]
   catch
     {__MODULE__, :try_requires_both} -> nil
   end
 
-  defp try_requires_through(right, left, left_line, right_line) do
+  defp try_requires_through(right, left, opts) do
     if length(left.terms) == 1 or length(right.terms) == 1 do
       throw({__MODULE__, :try_requires_through})
     end
@@ -228,12 +243,12 @@ defmodule HexSolver.Incompatibility do
         left_negative && right_positive &&
           left_negative.package_range.name == right_positive.package_range.name &&
             Term.satisfies?(Term.inverse(left_negative), right_positive) ->
-          {left, left_negative, left_line, right, right_line}
+          {left, left_negative, opts[:left_line], right, opts[:right_line]}
 
         right_negative && left_positive &&
           right_negative.package_range.name == left_positive.package_range.name &&
             Term.satisfies?(Term.inverse(right_negative), left_positive) ->
-          {right, right_negative, right_line, left, left_line}
+          {right, right_negative, opts[:right_line], left, opts[:left_line]}
 
         true ->
           throw({__MODULE__, :try_requires_through})
@@ -243,15 +258,15 @@ defmodule HexSolver.Incompatibility do
 
     buffer =
       if length(prior_positives) > 1 do
-        prior_string = Enum.map_join(prior_positives, " or ", &term_abs/1)
+        prior_string = Enum.map_join(prior_positives, " or ", &bright_term_abs(&1, opts))
         "if #{prior_string} then "
       else
-        "#{terse_every(List.first(prior_positives))} #{cause_verb(prior)} "
+        "#{terse_every(List.first(prior_positives), opts)} #{cause_verb(prior)} "
       end
 
     buffer = [
       buffer,
-      term_abs(prior_negative),
+      bright_term_abs(prior_negative, opts),
       maybe_line(prior_line),
       " which ",
       cause_verb(latter)
@@ -260,23 +275,23 @@ defmodule HexSolver.Incompatibility do
     latter_string =
       latter.terms
       |> Enum.reject(& &1.positive)
-      |> Enum.map_join(" or ", &term_abs/1)
+      |> Enum.map_join(" or ", &bright_term_abs(&1, opts))
 
     [buffer, " ", latter_string, maybe_line(latter_line)]
   catch
     {__MODULE__, :try_requires_through} -> nil
   end
 
-  defp try_requires_forbidden(left, right, left_line, right_line) do
+  defp try_requires_forbidden(left, right, opts) do
     if length(left.terms) != 1 and length(right.terms) != 1 do
       throw({__MODULE__, :try_requires_forbidden})
     end
 
     {prior, prior_line, latter, latter_line} =
       if length(left.terms) == 1 do
-        {right, right_line, left, left_line}
+        {right, opts[:right_line], left, opts[:left_line]}
       else
-        {left, left_line, right, right_line}
+        {left, opts[:left_line], right, opts[:right_line]}
       end
 
     negative = single_term(prior, &(not &1.positive))
@@ -294,13 +309,18 @@ defmodule HexSolver.Incompatibility do
     buffer =
       case positives do
         [positive] ->
-          [terse_every(positive), " ", cause_verb(prior), " "]
+          [terse_every(positive, opts), " ", cause_verb(prior), " "]
 
         _ ->
-          ["if ", Enum.map_join(positives, " or ", &term_abs/1), " then "]
+          ["if ", Enum.map_join(positives, " or ", &bright_term_abs(&1, opts)), " then "]
       end
 
-    buffer = [buffer, term_abs(List.first(latter.terms)), maybe_line(prior_line), " "]
+    buffer = [
+      buffer,
+      bright_term_abs(List.first(latter.terms), opts),
+      maybe_line(prior_line),
+      " "
+    ]
 
     buffer =
       case latter.cause do
@@ -312,6 +332,14 @@ defmodule HexSolver.Incompatibility do
     [buffer, maybe_line(latter_line)]
   catch
     {__MODULE__, :try_requires_forbidden} -> nil
+  end
+
+  defp bright(string, opts) do
+    if Keyword.get(opts, :ansi, false) do
+      [IO.ANSI.bright(), Kernel.to_string(string), IO.ANSI.reset()]
+    else
+      ~s("#{string}")
+    end
   end
 
   defp cause_verb(true), do: "depends on"
@@ -336,30 +364,39 @@ defmodule HexSolver.Incompatibility do
     end)
   end
 
-  defp package_name(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
-  defp package_name(%Term{package_range: %PackageRange{name: "$lock"}}), do: "lock"
-  defp package_name(%Term{package_range: %PackageRange{name: name}}), do: name
+  defp package_name(%Term{package_range: %PackageRange{name: "$root"}}, opts),
+    do: bright("your app", opts)
 
-  defp terse_name(term) do
+  defp package_name(%Term{package_range: %PackageRange{name: "$lock"}}, opts),
+    do: bright("lock", opts)
+
+  defp package_name(%Term{package_range: %PackageRange{name: name}}, opts), do: bright(name, opts)
+
+  defp terse_name(term, opts) do
     if Constraint.any?(term.package_range.constraint) do
-      package_name(term)
+      package_name(term, opts)
     else
-      PackageRange.to_string(term.package_range)
+      bright(PackageRange.to_string(term.package_range), opts)
     end
   end
 
-  defp terse_every(%Term{package_range: %PackageRange{name: "$root"}}), do: "myapp"
-  defp terse_every(%Term{package_range: %PackageRange{name: "$lock"}}), do: "lock"
+  defp terse_every(%Term{package_range: %PackageRange{name: "$root"}}, opts),
+    do: bright("your app", opts)
 
-  defp terse_every(term) do
+  defp terse_every(%Term{package_range: %PackageRange{name: "$lock"}}, opts),
+    do: bright("lock", opts)
+
+  defp terse_every(term, opts) do
     if Constraint.any?(term.package_range.constraint) do
-      "every version of #{package_name(term)}"
+      "every version of #{package_name(term, opts)}"
     else
-      PackageRange.to_string(term.package_range)
+      bright(PackageRange.to_string(term.package_range), opts)
     end
   end
 
-  defp term_abs(term), do: Term.to_string(%Term{term | positive: true})
+  defp term_abs(term), do: %Term{term | positive: true}
+
+  defp bright_term_abs(term, opts), do: bright(term_abs(term), opts)
 
   defimpl String.Chars do
     defdelegate to_string(incompatibility), to: HexSolver.Incompatibility

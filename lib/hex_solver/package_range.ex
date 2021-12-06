@@ -7,7 +7,7 @@ defmodule HexSolver.PackageRange do
   defstruct name: nil,
             constraint: nil
 
-  def to_string(%PackageRange{name: "$root"}), do: "myapp"
+  def to_string(%PackageRange{name: "$root"}), do: "your app"
   def to_string(%PackageRange{name: "$lock"}), do: "lock"
 
   def to_string(%PackageRange{name: name, constraint: constraint}),
