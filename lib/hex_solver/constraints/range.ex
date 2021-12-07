@@ -346,10 +346,13 @@ defmodule HexSolver.Constraints.Range do
         :gt
 
       true ->
+        left_include_min = left.include_min
+        right_include_min = right.include_min
+
         case Version.compare(left.min, right.min) do
-          :eq when left.include_min == right.include_min -> :eq
-          :eq when left.include_min -> :lt
-          :eq when right.include_min -> :gt
+          :eq when left_include_min == right_include_min -> :eq
+          :eq when left_include_min -> :lt
+          :eq when right_include_min -> :gt
           :lt -> :lt
           :gt -> :gt
         end

@@ -32,41 +32,31 @@ defmodule HexSolverTest do
   end
 
   test "parse_constraint/1" do
-    assert HexSolver.parse_constraint("1.0.0") == {:ok, %Version{major: 1, minor: 0, patch: 0}}
+    assert HexSolver.parse_constraint("1.0.0") == Version.parse("1.0.0")
 
     assert HexSolver.parse_constraint("~> 1.0") ==
              {:ok,
               %Range{
-                min: %Version{major: 1, minor: 0, patch: 0},
-                max: %Version{major: 2, minor: 0, patch: 0, pre: [0]},
+                min: Version.parse!("1.0.0"),
+                max: Version.parse!("2.0.0-0"),
                 include_min: true
               }}
 
-    assert HexSolver.parse_constraint(%Version{major: 1, minor: 0, patch: 0}) ==
-             {:ok,
-              %Version{
-                major: 1,
-                minor: 0,
-                patch: 0
-              }}
+    assert HexSolver.parse_constraint(Version.parse!("1.0.0")) == Version.parse("1.0.0")
 
     assert HexSolver.parse_constraint("1.2.3.4") == :error
   end
 
   test "parse_constraint!/1" do
-    assert HexSolver.parse_constraint!("1.0.0") == %Version{major: 1, minor: 0, patch: 0}
+    assert HexSolver.parse_constraint!("1.0.0") == Version.parse!("1.0.0")
 
     assert HexSolver.parse_constraint!("~> 1.0") == %Range{
-             min: %Version{major: 1, minor: 0, patch: 0},
-             max: %Version{major: 2, minor: 0, patch: 0, pre: [0]},
+             min: Version.parse!("1.0.0"),
+             max: Version.parse!("2.0.0-0"),
              include_min: true
            }
 
-    assert HexSolver.parse_constraint!(%Version{major: 1, minor: 0, patch: 0}) == %Version{
-             major: 1,
-             minor: 0,
-             patch: 0
-           }
+    assert HexSolver.parse_constraint!(Version.parse!("1.0.0")) == Version.parse!("1.0.0")
 
     assert_raise Version.InvalidRequirementError, fn ->
       HexSolver.parse_constraint!("1.2.3.4")
