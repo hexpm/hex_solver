@@ -3,7 +3,8 @@ use Mix.Config
 config :logger,
   compile_time_purge_matching: [
     [level_lower_than: :info]
-  ]
+  ],
+  compile_time_purge_level: :info
 
 config :logger, :console, format: "[$level] $levelpad$message\n"
 
