@@ -1,5 +1,6 @@
 defmodule HexSolver.Case do
   use ExUnit.CaseTemplate
+  alias HexSolver.Case.Store
   alias HexSolver.{Incompatibility, Requirement}
   alias HexSolver.Constraints.{Empty, Range, Union}
   alias HexSolver.Registry.Process, as: Registry
@@ -11,30 +12,32 @@ defmodule HexSolver.Case do
   end
 
   def requirement() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :requirements}))
+    StreamData.member_of(Store.get({:resolver_test, :requirements}))
   end
 
   def constraint() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :constraints}))
+    StreamData.member_of(Store.get({:resolver_test, :constraints}))
   end
 
   def range() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :ranges}))
+    StreamData.member_of(Store.get({:resolver_test, :ranges}))
   end
 
   def union() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :unions}))
+    StreamData.member_of(Store.get({:resolver_test, :unions}))
   end
 
   def version() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :versions}))
+    StreamData.member_of(Store.get({:resolver_test, :versions}))
   end
 
   def release() do
-    StreamData.member_of(:persistent_term.get({:resolver_test, :releases}))
+    StreamData.member_of(Store.get({:resolver_test, :releases}))
   end
 
   def init_registry() do
+    Store.start()
+
     registry =
       "test/fixtures/registry.json"
       |> File.read!()
@@ -78,16 +81,16 @@ defmodule HexSolver.Case do
     ranges = Enum.filter(constraints, &match?(%Range{}, &1))
     unions = Enum.filter(constraints, &match?(%Union{}, &1))
 
-    :persistent_term.put({:resolver_test, :releases}, releases)
-    :persistent_term.put({:resolver_test, :versions}, versions)
-    :persistent_term.put({:resolver_test, :requirements}, requirements)
-    :persistent_term.put({:resolver_test, :constraints}, constraints)
-    :persistent_term.put({:resolver_test, :ranges}, ranges)
-    :persistent_term.put({:resolver_test, :unions}, unions)
+    Store.put({:resolver_test, :releases}, releases)
+    Store.put({:resolver_test, :versions}, versions)
+    Store.put({:resolver_test, :requirements}, requirements)
+    Store.put({:resolver_test, :constraints}, constraints)
+    Store.put({:resolver_test, :ranges}, ranges)
+    Store.put({:resolver_test, :unions}, unions)
   end
 
   def load_registry() do
-    releases = :persistent_term.get({:resolver_test, :releases})
+    releases = Store.get({:resolver_test, :releases})
 
     Enum.each(releases, fn {package, version, dependencies} ->
       Registry.put(package, version, dependencies)
@@ -95,7 +98,7 @@ defmodule HexSolver.Case do
   end
 
   def registry_release(package, version) do
-    releases = :persistent_term.get({:resolver_test, :releases})
+    releases = Store.get({:resolver_test, :releases})
 
     Enum.find_value(releases, fn
       {^package, ^version, dependencies} -> dependencies
@@ -258,5 +261,17 @@ defmodule HexSolver.Case do
         end
       end)
     end)
+  end
+
+  defmodule Store do
+    if Code.ensure_loaded?(:persistent_term) do
+      def start(), do: :ok
+      defdelegate put(key, value), to: :persistent_term
+      defdelegate get(key), to: :persistent_term
+    else
+      def start(), do: :ets.new(__MODULE__, [:named_table, :public, read_concurrency: true])
+      def put(key, value), do: :ets.insert(__MODULE__, {key, value})
+      def get(key), do: :ets.lookup_element(__MODULE__, key, 2)
+    end
   end
 end

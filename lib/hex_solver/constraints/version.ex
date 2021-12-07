@@ -12,13 +12,10 @@ defmodule HexSolver.Constraints.Version do
 
   def empty?(%Version{}), do: false
 
-  def allows?(%Version{} = left, %Version{} = right) do
-    left == right
-  end
+  def allows?(%Version{} = left, %Version{} = right), do: left == right
 
-  def allows_any?(%Version{} = left, right) do
-    Constraint.allows?(right, left)
-  end
+  def allows_any?(%Version{}, %Empty{}), do: true
+  def allows_any?(%Version{} = left, right), do: Constraint.allows?(right, left)
 
   def allows_all?(%Version{}, %Empty{}) do
     true
