@@ -9,5 +9,6 @@ config :logger,
 config :logger, :console, format: "[$level] $levelpad$message\n"
 
 if Mix.env() == :test do
-  config :stream_data, max_runs: 1000
+  max_runs = String.to_integer(System.get_env("MAX_RUNS") || "1000")
+  config :stream_data, max_runs: max_runs
 end

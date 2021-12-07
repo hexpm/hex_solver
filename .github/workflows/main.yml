@@ -13,6 +13,7 @@ jobs:
           - erlang: "24.1.7"
             elixir: "1.13.0"
             lint: true
+            big: true
           - erlang: "24.1.7"
             elixir: "1.12.3"
           - erlang: "23.3.4"
@@ -55,3 +56,10 @@ jobs:
 
       - name: Run tests
         run: mix test
+        if: ${{!matrix.big}}
+
+      - name: Run tests
+        run: mix test
+        if: ${{matrix.big}}
+        env:
+          MAX_RUNS: "50000"
