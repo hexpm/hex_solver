@@ -64,12 +64,12 @@ defmodule HexSolver.Case do
       |> Enum.shuffle()
 
     requirements =
-      for(
-        {_package, versions} <- registry,
-        {_version, dependencies} <- versions,
-        {_package, dependency} <- dependencies,
-        do: Version.parse_requirement!(dependency["requirement"])
-      )
+      for {_package, versions} <- registry,
+          {_version, dependencies} <- versions,
+          {_package, dependency} <- dependencies do
+        {:ok, requirement} = Version.parse_requirement(dependency["requirement"])
+        requirement
+      end
       |> Enum.uniq()
       |> Enum.shuffle()
 
