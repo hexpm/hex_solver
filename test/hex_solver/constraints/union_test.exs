@@ -2,7 +2,7 @@ defmodule HexSolver.Constraints.UnionTest do
   use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias HexSolver.Constraint
+  alias HexSolver.{Constraint, Util}
   alias HexSolver.Constraints.Union
 
   property "allows?/2" do
@@ -33,7 +33,7 @@ defmodule HexSolver.Constraints.UnionTest do
   describe "difference/2" do
     property "with contained versions" do
       check all versions <- uniq_list_of(version(), min_length: 2, max_length: 10) do
-        versions = Enum.sort(versions, HexSolver.Constraint)
+        versions = Enum.sort(versions, Util.compare(HexSolver.Constraint))
         version = Enum.random(versions)
         difference = Constraint.difference(%Union{ranges: versions}, version)
 
@@ -51,7 +51,7 @@ defmodule HexSolver.Constraints.UnionTest do
       check all versions <- uniq_list_of(version(), min_length: 2, max_length: 10),
                 version <- version(),
                 version not in versions do
-        versions = Enum.sort(versions, HexSolver.Constraint)
+        versions = Enum.sort(versions, Util.compare(HexSolver.Constraint))
         union = %Union{ranges: versions}
         assert Constraint.difference(union, version) == union
       end

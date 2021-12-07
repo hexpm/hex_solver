@@ -38,7 +38,7 @@ defmodule HexSolver.Registry.Process do
   def put(package, version, dependencies) do
     version = Version.parse!(version)
     versions = Process.get({__MODULE__, :versions, package}, [])
-    versions = Enum.sort(Enum.uniq([version | versions]), Version)
+    versions = Enum.sort(Enum.uniq([version | versions]), HexSolver.Util.compare(Version))
 
     dependencies =
       Enum.map(dependencies, fn

@@ -5,9 +5,10 @@ defmodule HexSolver.MixProject do
     [
       app: :hex_solver,
       version: "0.1.0",
-      elixir: "~> 1.11",
+      elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      config_path: config_path(),
       deps: deps()
     ]
   end
@@ -21,6 +22,14 @@ defmodule HexSolver.MixProject do
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp config_path() do
+    if Version.compare(System.version(), "1.11.0") in [:eq, :gt] do
+      "config/config.exs"
+    else
+      "config/mix_config.exs"
+    end
+  end
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do

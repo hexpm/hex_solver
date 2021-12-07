@@ -1,7 +1,7 @@
 defmodule HexSolver.Constraints.Util do
   @moduledoc false
 
-  alias HexSolver.Constraint
+  alias HexSolver.{Constraint, Util}
   alias HexSolver.Constraints.{Empty, Range, Union, Version}
 
   def any(), do: %Range{}
@@ -21,7 +21,9 @@ defmodule HexSolver.Constraints.Util do
         %Range{}
 
       true ->
-        Enum.reduce(Enum.sort(list, Constraint), [], fn constraint, acc ->
+        list
+        |> Enum.sort(Util.compare(Constraint))
+        |> Enum.reduce([], fn constraint, acc ->
           previous = List.first(acc)
 
           cond do

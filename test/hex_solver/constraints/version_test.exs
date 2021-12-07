@@ -2,7 +2,7 @@ defmodule HexSolver.Constraints.VersionTest do
   use HexSolver.Case, async: true
   use ExUnitProperties
 
-  alias HexSolver.Constraint
+  alias HexSolver.{Constraint, Util}
   alias HexSolver.Constraints.{Empty, Range, Union, Version}
 
   property "any?/1" do
@@ -160,7 +160,7 @@ defmodule HexSolver.Constraints.VersionTest do
       check all version1 <- version(),
                 version2 <- version(),
                 version1 != version2 do
-        ranges = Enum.sort([version1, version2], Version)
+        ranges = Enum.sort([version1, version2], Util.compare(Version))
         assert Version.union(version1, version2) == %Union{ranges: ranges}
       end
     end
@@ -178,7 +178,7 @@ defmodule HexSolver.Constraints.VersionTest do
   property "min/2" do
     check all version1 <- version(),
               version2 <- version() do
-      [version1, version2] = Enum.sort([version1, version2], Version)
+      [version1, version2] = Enum.sort([version1, version2], Util.compare(Version))
       assert Version.min(version1, version2) == version1
     end
   end
@@ -186,7 +186,7 @@ defmodule HexSolver.Constraints.VersionTest do
   property "max/2" do
     check all version1 <- version(),
               version2 <- version() do
-      [version1, version2] = Enum.sort([version1, version2], Version)
+      [version1, version2] = Enum.sort([version1, version2], Util.compare(Version))
       assert Version.max(version1, version2) == version2
     end
   end

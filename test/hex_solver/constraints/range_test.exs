@@ -28,7 +28,7 @@ defmodule HexSolver.Constraints.RangeTest do
       check all version1 <- version(),
                 version2 <- version(),
                 version1 != version2 do
-        [min, max] = Enum.sort([version1, version2], Version)
+        [min, max] = Enum.sort([version1, version2], HexSolver.Util.compare(Version))
 
         assert Range.valid?(%Range{min: min, max: max})
         refute Range.valid?(%Range{min: max, max: min})
@@ -48,7 +48,7 @@ defmodule HexSolver.Constraints.RangeTest do
   describe "allows?/2" do
     property "with versions" do
       check all versions <- uniq_list_of(version(), length: 3) do
-        [version1, version2, version3] = Enum.sort(versions, Version)
+        [version1, version2, version3] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.allows?(%Range{min: version1, max: version3}, version2)
         refute Range.allows?(%Range{min: version1, max: version2}, version3)
@@ -89,7 +89,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.allows_all?(
                  %Range{min: version1, max: version4},
@@ -115,7 +116,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with union" do
       check all versions <- uniq_list_of(version(), length: 5) do
-        [version1, version2, version3, version4, version5] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4, version5] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.allows_all?(
                  %Range{min: version1, max: version5},
@@ -166,7 +168,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.allows_any?(
                  %Range{min: version1, max: version4},
@@ -202,7 +205,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with union" do
       check all versions <- uniq_list_of(version(), length: 5) do
-        [version1, version2, version3, version4, version5] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4, version5] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.allows_any?(
                  %Range{min: version1, max: version5},
@@ -254,7 +258,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
   property "allows_higher?/2" do
     check all versions <- uniq_list_of(version(), length: 4) do
-      [version1, version2, version3, version4] = Enum.sort(versions, Version)
+      [version1, version2, version3, version4] =
+        Enum.sort(versions, HexSolver.Util.compare(Version))
 
       assert Range.allows_higher?(
                %Range{min: version3, max: version4},
@@ -280,7 +285,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
   property "allows_lower?/2" do
     check all versions <- uniq_list_of(version(), length: 4) do
-      [version1, version2, version3, version4] = Enum.sort(versions, Version)
+      [version1, version2, version3, version4] =
+        Enum.sort(versions, HexSolver.Util.compare(Version))
 
       assert Range.allows_lower?(
                %Range{min: version1, max: version2},
@@ -313,7 +319,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
   property "strictly_lower?/2" do
     check all versions <- uniq_list_of(version(), length: 4) do
-      [version1, version2, version3, version4] = Enum.sort(versions, Version)
+      [version1, version2, version3, version4] =
+        Enum.sort(versions, HexSolver.Util.compare(Version))
 
       assert Range.strictly_lower?(
                %Range{min: version1, max: version2},
@@ -361,7 +368,7 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with version" do
       check all versions <- uniq_list_of(version(), length: 3) do
-        [version1, version2, version3] = Enum.sort(versions, Version)
+        [version1, version2, version3] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.difference(%Range{min: version1, max: version2}, version3) ==
                  %Range{min: version1, max: version2}
@@ -390,7 +397,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.difference(
                  %Range{min: version1, max: version2},
@@ -451,7 +459,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "with union" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.difference(
                  %Range{min: version1, max: version2},
@@ -491,7 +500,7 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "version" do
       check all versions <- uniq_list_of(version(), length: 3) do
-        [version1, version2, version3] = Enum.sort(versions, Version)
+        [version1, version2, version3] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.intersect(%Range{min: version1, max: version3}, version2) == version2
         assert Range.intersect(%Range{min: version1, max: version2}, version3) == %Empty{}
@@ -510,7 +519,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.intersect(
                  %Range{min: version1, max: version2},
@@ -580,7 +590,7 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "version" do
       check all versions <- uniq_list_of(version(), length: 3) do
-        [version1, version2, version3] = Enum.sort(versions, Version)
+        [version1, version2, version3] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.union(%Range{min: version1, max: version3}, version2) ==
                  %Range{min: version1, max: version3}
@@ -595,7 +605,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.union(
                  %Range{min: version1, max: version2},
@@ -632,7 +643,7 @@ defmodule HexSolver.Constraints.RangeTest do
   describe "compare/2" do
     property "version" do
       check all versions <- uniq_list_of(version(), length: 3) do
-        [version1, version2, version3] = Enum.sort(versions, Version)
+        [version1, version2, version3] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.compare(%Range{min: version1, max: version2}, version3) == :lt
         assert Range.compare(%Range{min: version1, max: version2}, version1) == :gt
@@ -646,7 +657,8 @@ defmodule HexSolver.Constraints.RangeTest do
 
     property "range" do
       check all versions <- uniq_list_of(version(), length: 4) do
-        [version1, version2, version3, version4] = Enum.sort(versions, Version)
+        [version1, version2, version3, version4] =
+          Enum.sort(versions, HexSolver.Util.compare(Version))
 
         assert Range.compare(
                  %Range{min: version1, max: version2},
@@ -685,7 +697,7 @@ defmodule HexSolver.Constraints.RangeTest do
 
   property "single_version?/1" do
     check all versions <- uniq_list_of(version(), length: 2) do
-      [version1, version2] = Enum.sort(versions, Version)
+      [version1, version2] = Enum.sort(versions, HexSolver.Util.compare(Version))
 
       assert Range.single_version?(%Range{
                min: version1,

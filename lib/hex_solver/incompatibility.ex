@@ -27,7 +27,8 @@ defmodule HexSolver.Incompatibility do
       [_first] ->
         %Incompatibility{terms: terms, cause: cause}
 
-      [first, second] when first.package_range.name != second.package_range.name ->
+      [%{package_range: %{name: first}}, %{package_range: %{name: second}}]
+      when first != second ->
         %Incompatibility{terms: terms, cause: cause}
 
       _ ->
@@ -41,10 +42,7 @@ defmodule HexSolver.Incompatibility do
   end
 
   def failure?(%Incompatibility{terms: []}), do: true
-
-  def failure?(%Incompatibility{terms: [term]}) when term.package_range.name == "$root",
-    do: true
-
+  def failure?(%Incompatibility{terms: [%{package_range: %{name: "$root"}}]}), do: true
   def failure?(%Incompatibility{}), do: false
 
   def to_string(incompatibilty, opts \\ [])
@@ -52,11 +50,13 @@ defmodule HexSolver.Incompatibility do
   def to_string(
         %Incompatibility{
           cause: :dependency,
-          terms: [%Term{positive: true} = depender, %Term{positive: false} = dependee]
+          terms: [
+            %Term{package_range: %PackageRange{name: "$lock"}, positive: true},
+            %Term{positive: false} = dependee
+          ]
         },
         opts
-      )
-      when depender.package_range.name == "$lock" do
+      ) do
     "\"lock\" specifies #{bright_term_abs(dependee, opts)}"
   end
 
@@ -119,13 +119,18 @@ defmodule HexSolver.Incompatibility do
     "#{terse_name(%Term{term | positive: true}, opts)} is required"
   end
 
-  def to_string(%Incompatibility{terms: [left, right]}, opts)
-      when left.positive == right.positive do
-    if left.positive do
-      "#{terse_name(term_abs(left), opts)} is incompatible with #{terse_name(term_abs(right), opts)}"
-    else
-      "either #{bright_term_abs(left, opts)} or #{bright_term_abs(right, opts)}"
-    end
+  def to_string(
+        %Incompatibility{terms: [%{positive: true} = left, %{positive: true} = right]},
+        opts
+      ) do
+    "#{terse_name(left, opts)} is incompatible with #{terse_name(right, opts)}"
+  end
+
+  def to_string(
+        %Incompatibility{terms: [%{positive: false} = left, %{positive: false} = right]},
+        opts
+      ) do
+    "either #{bright_term_abs(left, opts)} or #{bright_term_abs(right, opts)}"
   end
 
   def to_string(%Incompatibility{terms: terms}, opts) do
@@ -152,12 +157,16 @@ defmodule HexSolver.Incompatibility do
   def to_string_and(left, right, opts \\ [])
 
   def to_string_and(
-        %Incompatibility{terms: [lock, _dependency], cause: :dependency} = left,
-        %Incompatibility{terms: [root, lock_dependency], cause: :dependency},
+        %Incompatibility{
+          terms: [%{package_range: %{name: "$lock"}}, _dependency],
+          cause: :dependency
+        } = left,
+        %Incompatibility{
+          terms: [%{package_range: %{name: "$root"}}, %{package_range: %{name: "$lock"}}],
+          cause: :dependency
+        },
         opts
-      )
-      when root.package_range.name == "$root" and lock_dependency.package_range.name == "$lock" and
-             lock.package_range.name == "$lock" do
+      ) do
     to_string(left, opts)
   end
 
