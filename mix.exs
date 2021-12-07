@@ -5,7 +5,7 @@ defmodule HexSolver.MixProject do
     [
       app: :hex_solver,
       version: "0.1.0",
-      elixir: "~> 1.10",
+      elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       config_path: config_path(),
