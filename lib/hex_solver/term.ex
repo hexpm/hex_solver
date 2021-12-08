@@ -47,6 +47,7 @@ defmodule HexSolver.Term do
 
   def intersect(%Term{} = left, %Term{} = right) do
     true = compatible_package?(left, right)
+    optional = if left.optional == right.optional, do: left.optional, else: false
 
     cond do
       left.positive != right.positive ->
@@ -54,15 +55,15 @@ defmodule HexSolver.Term do
         negative = if left.positive, do: right, else: left
 
         constraint = Constraint.difference(constraint(positive), constraint(negative))
-        non_empty_term(left, constraint, true)
+        non_empty_term(left, constraint, optional, true)
 
       left.positive and right.positive ->
         constraint = Constraint.intersect(constraint(left), constraint(right))
-        non_empty_term(left, constraint, true)
+        non_empty_term(left, constraint, optional, true)
 
       not left.positive and not right.positive ->
         constraint = Constraint.union(constraint(left), constraint(right))
-        non_empty_term(left, constraint, false)
+        non_empty_term(left, constraint, optional, false)
     end
   end
 
@@ -86,14 +87,15 @@ defmodule HexSolver.Term do
     constraint
   end
 
-  defp non_empty_term(_term, %Empty{}, _positive) do
+  defp non_empty_term(_term, %Empty{}, _optional, _positive) do
     nil
   end
 
-  defp non_empty_term(term, constraint, positive) do
+  defp non_empty_term(term, constraint, optional, positive) do
     %Term{
       package_range: %{term.package_range | constraint: constraint},
-      positive: positive
+      positive: positive,
+      optional: optional
     }
   end
 
