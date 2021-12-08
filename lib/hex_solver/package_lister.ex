@@ -14,8 +14,10 @@ defmodule HexSolver.PackageLister do
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
   def pick_package(lister, package_ranges) do
-    package_range_versions =
-      Enum.map(package_ranges, fn package_range ->
+    {package_range, versions} =
+      package_ranges
+      |> Enum.sort_by(& &1.name)
+      |> Enum.map(fn package_range ->
         case versions(lister, package_range.name) do
           {:ok, versions} ->
             allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
@@ -25,9 +27,7 @@ defmodule HexSolver.PackageLister do
             throw({__MODULE__, :minimal_versions, package_range.name})
         end
       end)
-
-    {package_range, versions} =
-      Enum.min_by(package_range_versions, fn {_package_range, versions} -> length(versions) end)
+      |> Enum.min_by(fn {_package_range, versions} -> length(versions) end)
 
     {:ok, package_range, List.first(Enum.sort(versions, &Version.prioritize/2))}
   catch
