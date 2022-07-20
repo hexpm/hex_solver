@@ -5,7 +5,7 @@ config :logger,
     [level_lower_than: :info]
   ]
 
-config :logger, :console, format: "[$level] $levelpad$message\n"
+config :logger, :console, format: "[$level] $message\n"
 
 if config_env() == :test do
   max_runs = String.to_integer(System.get_env("MAX_RUNS") || "1000")

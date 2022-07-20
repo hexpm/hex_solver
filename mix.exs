@@ -1,6 +1,9 @@
 defmodule HexSolver.MixProject do
   use Mix.Project
 
+  @version "0.1.0"
+  @repo_url "https://github.com/hexpm/hex_solver"
+
   def project do
     [
       app: :hex_solver,
@@ -9,7 +12,18 @@ defmodule HexSolver.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       config_path: config_path(),
-      deps: deps()
+      deps: deps(),
+
+      # Hex
+      package: package(),
+      description: "PubGrub based dependency version solver for Hex",
+
+      # Docs
+      name: "HexSolver",
+      docs: [
+        source_ref: "v#{@version}",
+        source_url: @repo_url
+      ]
     ]
   end
 
@@ -34,9 +48,17 @@ defmodule HexSolver.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:ex_doc, "~> 0.28", only: :dev},
       {:hex_core, "~> 0.8.2", only: :dev},
       {:jason, "~> 1.2", only: [:dev, :test]},
       {:stream_data, "~> 0.5.0", only: [:dev, :test]}
+    ]
+  end
+
+  defp package do
+    [
+      licenses: ["Apache-2.0"],
+      links: %{"GitHub" => @repo_url}
     ]
   end
 end
