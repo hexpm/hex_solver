@@ -149,12 +149,12 @@ defmodule HexSolver.Solver do
           state = %{state | solution: solution}
           {:choice, package_range.name, state}
 
-        {:error, name} ->
-          package_range = %PackageRange{name: name, constraint: Util.any()}
+        {:error, package_range} ->
+          package_range = %PackageRange{package_range | constraint: Util.any()}
           term = %Term{positive: true, package_range: package_range}
           incompatibility = Incompatibility.new([term], :package_not_found)
           state = add_incompatibility(state, incompatibility)
-          {:choice, name, state}
+          {:choice, package_range.name, state}
       end
     end
   end
@@ -196,29 +196,8 @@ defmodule HexSolver.Solver do
     if Incompatibility.failure?(incompatibility) do
       {:error, incompatibility}
     else
-      resolution = %{
-        # The term in incompatibility.terms that was most recently satisfied by the solution.
-        most_recent_term: nil,
-        # The earliest assignment in the solution such that incompatibility is satisfied
-        # by the solution up to and including this assignment.
-        most_recent_satisfier: nil,
-        # The difference between most_recent_satisfier and most_recent_term, that is,
-        # the versions that are allowed by most_recent_satisfier but not by most_recent_term.
-        # nil if most_recent_satisfier totally satisfies most_recent_term.
-        difference: nil,
-        # The decision level of the earliest assignment before most_recent_satisfier
-        # such that incompatibility is satisfied by the solution up to and including
-        # this assignment and most_recent_satisfier.
-
-        # Decision level 1 is the level where the root package was selected. We can
-        # go back to level 0 but level 1 tends to give better error messages, because
-        # references to the root package end up closer to the final conclusion that
-        # no solution exists.
-        previous_satisfier_level: 1
-      }
-
       resolution =
-        Enum.reduce(incompatibility.terms, resolution, fn term, resolution ->
+        Enum.reduce(incompatibility.terms, new_resolution_state(), fn term, resolution ->
           satisfier = PartialSolution.satisfier(state.solution, term)
 
           resolution =
@@ -293,7 +272,7 @@ defmodule HexSolver.Solver do
         throw({__MODULE__, :conflict_resolution, incompatibility, state})
       end
 
-      # Create a new incompatibility be combining the given incompatibility with
+      # Create a new incompatibility by combining the given incompatibility with
       # the incompatibility that caused most_recent_satisfier to be assigned.
       # Doing this iteratively constructs a new new incompatibility that's guaranteed
       # to be true (we know for sure no solution will satisfy the incompatibility)
@@ -338,6 +317,28 @@ defmodule HexSolver.Solver do
 
       do_conflict_resolution(state, incompatibility, true)
     end
+  end
+
+  defp new_resolution_state() do
+    %{
+      # The term in incompatibility.terms that was most recently satisfied by the solution.
+      most_recent_term: nil,
+      # The earliest assignment in the solution such that incompatibility is satisfied
+      # by the solution up to and including this assignment.
+      most_recent_satisfier: nil,
+      # The difference between most_recent_satisfier and most_recent_term, that is,
+      # the versions that are allowed by most_recent_satisfier but not by most_recent_term.
+      # nil if most_recent_satisfier totally satisfies most_recent_term.
+      difference: nil,
+      # The decision level of the earliest assignment before most_recent_satisfier
+      # such that incompatibility is satisfied by the solution up to and including
+      # this assignment and most_recent_satisfier.
+      # Decision level 1 is the level where the root package was selected. We can
+      # go back to level 0 but level 1 tends to give better error messages, because
+      # references to the root package end up closer to the final conclusion that
+      # no solution exists.
+      previous_satisfier_level: 1
+    }
   end
 
   defp new_state(registry, root_dependencies, locked, overrides) do

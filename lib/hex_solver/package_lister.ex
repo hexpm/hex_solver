@@ -24,15 +24,15 @@ defmodule HexSolver.PackageLister do
             {package_range, allowed}
 
           :error ->
-            throw({__MODULE__, :minimal_versions, package_range.name})
+            throw({__MODULE__, :minimal_versions, package_range})
         end
       end)
       |> Enum.min_by(fn {_package_range, versions} -> length(versions) end)
 
     {:ok, package_range, List.first(Enum.sort(versions, &Version.prioritize/2))}
   catch
-    :throw, {__MODULE__, :minimal_versions, name} ->
-      {:error, name}
+    :throw, {__MODULE__, :minimal_versions, package_range} ->
+      {:error, package_range}
   end
 
   def dependencies_as_incompatibilities(%PackageLister{} = lister, package_repo, package, version) do

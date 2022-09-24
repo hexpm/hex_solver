@@ -38,18 +38,27 @@ defmodule HexSolver.PartialSolution do
   def satisfier(%PartialSolution{} = solution, term) do
     {:satisfier, assignment} =
       Enum.reduce_while(Enum.reverse(solution.assignments), nil, fn assignment, assigned_term ->
-        if Term.compatible_package?(assignment.term, term) do
-          assigned_term =
-            if assigned_term do
-              Assignment.intersect(assigned_term, assignment)
-            else
-              assignment
-            end
+        if assignment.term.package_range.name == term.package_range.name do
+          if Term.compatible_package?(assignment.term, term) do
+            assigned_term =
+              if assigned_term do
+                Assignment.intersect(assigned_term, assignment)
+              else
+                assignment
+              end
 
-          if Term.satisfies?(assigned_term.term, term) do
-            {:halt, {:satisfier, assignment}}
+            if Term.satisfies?(assigned_term.term, term) do
+              {:halt, {:satisfier, assignment}}
+            else
+              {:cont, assigned_term}
+            end
           else
-            {:cont, assigned_term}
+            if assignment.term.positive do
+              false = term.positive
+              {:halt, {:satisfier, assignment}}
+            else
+              {:cont, assigned_term}
+            end
           end
         else
           {:cont, assigned_term}
