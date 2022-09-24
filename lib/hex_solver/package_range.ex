@@ -4,14 +4,18 @@ defmodule HexSolver.PackageRange do
   alias HexSolver.PackageRange
   alias HexSolver.Constraints.Range
 
-  defstruct name: nil,
+  defstruct repo: nil,
+            name: nil,
             constraint: nil
 
   def to_string(%PackageRange{name: "$root"}), do: "your app"
   def to_string(%PackageRange{name: "$lock"}), do: "lock"
 
-  def to_string(%PackageRange{name: name, constraint: constraint}),
+  def to_string(%PackageRange{repo: nil, name: name, constraint: constraint}),
     do: "#{name}#{constraint(constraint)}"
+
+  def to_string(%PackageRange{repo: repo, name: name, constraint: constraint}),
+    do: "#{repo}/#{name}#{constraint(constraint)}"
 
   defp constraint(%Range{min: nil, max: nil}), do: ""
   defp constraint(constraint), do: " #{constraint}"
@@ -21,8 +25,10 @@ defmodule HexSolver.PackageRange do
   end
 
   defimpl Inspect do
-    def inspect(%{name: name, constraint: constraint}, _opts) do
-      "#PackageRange<#{name} #{constraint}>"
-    end
+    def inspect(%{repo: nil, name: name, constraint: constraint}, _opts),
+      do: "#PackageRange<#{name} #{constraint}>"
+
+    def inspect(%{repo: repo, name: name, constraint: constraint}, _opts),
+      do: "#PackageRange<#{repo}/#{name} #{constraint}>"
   end
 end

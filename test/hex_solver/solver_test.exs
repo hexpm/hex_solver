@@ -16,8 +16,9 @@ defmodule HexSolver.SolverTest do
     case run do
       {:ok, decisions} ->
         result =
-          Map.new(decisions, fn {package, version} ->
-            {package, to_string(version)}
+          Map.new(decisions, fn
+            {package, {version, nil}} -> {package, to_string(version)}
+            {package, {version, repo}} -> {repo, package, to_string(version)}
           end)
 
         assert result["$root"] == "1.0.0"

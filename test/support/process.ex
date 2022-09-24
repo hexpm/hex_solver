@@ -1,58 +1,72 @@
 defmodule HexSolver.Registry.Process do
   @behaviour HexSolver.Registry
 
-  def versions(package) do
-    unless package in Process.get({__MODULE__, :prefetch}, []) do
-      raise "not prefetched #{package}"
+  def versions(repo, package) do
+    unless {repo, package} in Process.get({__MODULE__, :prefetch}, []) do
+      raise "not prefetched #{repo}/#{package}"
     end
 
-    case Process.get({__MODULE__, :versions, package}) do
+    case Process.get({__MODULE__, :versions, repo, package}) do
       nil -> :error
       versions -> {:ok, versions}
     end
   end
 
-  def dependencies(package, version) do
-    unless package in Process.get({__MODULE__, :prefetch}, []) do
-      raise "not prefetched #{package}"
+  def dependencies(repo, package, version) do
+    unless {repo, package} in Process.get({__MODULE__, :prefetch}, []) do
+      raise "not prefetched #{repo}/#{package}"
     end
 
-    case Process.get({__MODULE__, :dependencies, package, version}) do
+    case Process.get({__MODULE__, :dependencies, repo, package, version}) do
       nil -> :error
       dependencies -> {:ok, dependencies}
     end
   end
 
   def prefetch(packages) do
-    Enum.each(packages, fn package ->
+    Enum.each(packages, fn {repo, package} ->
       prefetch = Process.get({__MODULE__, :prefetch}, [])
 
-      if package in prefetch do
-        raise "already prefetched #{package}"
+      if {repo, package} in prefetch do
+        raise "already prefetched #{repo}/#{package}"
       else
-        Process.put({__MODULE__, :prefetch}, [package | prefetch])
+        Process.put({__MODULE__, :prefetch}, [{repo, package} | prefetch])
       end
     end)
   end
 
-  def put(package, version, dependencies) do
+  def put(repo \\ nil, package, version, dependencies) do
     version = Version.parse!(version)
-    versions = Process.get({__MODULE__, :versions, package}, [])
+    versions = Process.get({__MODULE__, :versions, repo, package}, [])
     versions = Enum.sort(Enum.uniq([version | versions]), HexSolver.Util.compare(Version))
 
     dependencies =
       Enum.map(dependencies, fn
         {package, requirement} ->
-          {package, HexSolver.Requirement.to_constraint!(requirement), false, package}
+          %{
+            repo: repo,
+            name: package,
+            constraint: HexSolver.Requirement.to_constraint!(requirement),
+            optional: false,
+            label: package
+          }
 
         {package, requirement, opts} ->
+          repo = Keyword.get(opts, :repo)
           optional = Keyword.get(opts, :optional, false)
           label = Keyword.get(opts, :label, package)
-          {package, HexSolver.Requirement.to_constraint!(requirement), optional, label}
+
+          %{
+            repo: repo,
+            name: package,
+            constraint: HexSolver.Requirement.to_constraint!(requirement),
+            optional: optional,
+            label: label
+          }
       end)
 
-    Process.put({__MODULE__, :versions, package}, versions)
-    Process.put({__MODULE__, :dependencies, package, version}, dependencies)
+    Process.put({__MODULE__, :versions, repo, package}, versions)
+    Process.put({__MODULE__, :dependencies, repo, package, version}, dependencies)
   end
 
   def reset_prefetch() do
@@ -61,14 +75,18 @@ defmodule HexSolver.Registry.Process do
 
   def keep(packages) do
     Enum.each(Process.get(), fn
-      {{__MODULE__, :versions, package} = key, _versions} ->
-        unless package in packages do
+      {{__MODULE__, :versions, repo, package} = key, _versions} ->
+        unless {repo, package} in packages do
           Process.delete(key)
         end
 
-      {{__MODULE__, :dependencies, package, _version} = key, dependencies} ->
-        if package in packages do
-          dependencies = Enum.filter(dependencies, &(elem(&1, 0) in packages))
+      {{__MODULE__, :dependencies, repo, package, _version} = key, dependencies} ->
+        if {repo, package} in packages do
+          dependencies =
+            Enum.filter(dependencies, fn %{repo: repo, name: package} ->
+              {repo, package} in packages
+            end)
+
           Process.put(key, dependencies)
         else
           Process.delete(key)
@@ -81,16 +99,20 @@ defmodule HexSolver.Registry.Process do
 
   def drop(packages) do
     Enum.each(Process.get(), fn
-      {{__MODULE__, :versions, package} = key, _versions} ->
-        if package in packages do
+      {{__MODULE__, :versions, repo, package} = key, _versions} ->
+        if {repo, package} in packages do
           Process.delete(key)
         end
 
-      {{__MODULE__, :dependencies, package, _version} = key, dependencies} ->
-        if package in packages do
+      {{__MODULE__, :dependencies, repo, package, _version} = key, dependencies} ->
+        if {repo, package} in packages do
           Process.delete(key)
         else
-          dependencies = Enum.reject(dependencies, &(elem(&1, 0) in packages))
+          dependencies =
+            Enum.reject(dependencies, fn %{repo: repo, name: package} ->
+              {repo, package} in packages
+            end)
+
           Process.put(key, dependencies)
         end
 
@@ -99,14 +121,14 @@ defmodule HexSolver.Registry.Process do
     end)
   end
 
-  def drop_version(package, version) do
-    Process.delete({__MODULE__, :dependencies, package, version})
-    versions = Process.get({__MODULE__, :versions, package}) -- [version]
+  def drop_version(repo, package, version) do
+    Process.delete({__MODULE__, :dependencies, repo, package, version})
+    versions = Process.get({__MODULE__, :versions, repo, package}) -- [version]
 
     if versions == [] do
-      Process.delete({__MODULE__, :versions, package})
+      Process.delete({__MODULE__, :versions, repo, package})
     else
-      Process.put({__MODULE__, :versions, package}, versions)
+      Process.put({__MODULE__, :versions, repo, package}, versions)
     end
   end
 
@@ -114,19 +136,19 @@ defmodule HexSolver.Registry.Process do
     Enum.reduce(packages, packages, &package_with_dependencies/2)
   end
 
-  defp package_with_dependencies(package, acc) do
-    versions = Process.get({__MODULE__, :versions, package})
+  defp package_with_dependencies({repo, package}, acc) do
+    versions = Process.get({__MODULE__, :versions, repo, package})
 
     Enum.reduce(versions, acc, fn version, acc ->
       dependencies =
-        Process.get({__MODULE__, :dependencies, package, version})
-        |> Enum.map(&elem(&1, 0))
+        Process.get({__MODULE__, :dependencies, repo, package, version})
+        |> Enum.map(fn %{repo: repo, name: package} -> {repo, package} end)
 
-      Enum.reduce(dependencies, acc, fn dependency, acc ->
-        if dependency in acc do
+      Enum.reduce(dependencies, acc, fn {repo, dependency}, acc ->
+        if {repo, dependency} in acc do
           acc
         else
-          package_with_dependencies(dependency, [dependency | acc])
+          package_with_dependencies({repo, dependency}, [{repo, dependency} | acc])
         end
       end)
     end)
@@ -134,10 +156,10 @@ defmodule HexSolver.Registry.Process do
 
   def get_state() do
     Enum.flat_map(Process.get(), fn
-      {{__MODULE__, :versions, _package}, _versions} = record ->
+      {{__MODULE__, :versions, _repo, _package}, _versions} = record ->
         [record]
 
-      {{__MODULE__, :dependencies, _package, _version}, _dependencies} = record ->
+      {{__MODULE__, :dependencies, _repo, _package, _version}, _dependencies} = record ->
         [record]
 
       _other ->
@@ -147,10 +169,10 @@ defmodule HexSolver.Registry.Process do
 
   def restore_state(records) do
     Enum.each(Process.get(), fn
-      {{__MODULE__, :versions, _package} = key, _versions} ->
+      {{__MODULE__, :versions, _repo, _package} = key, _versions} ->
         Process.delete(key)
 
-      {{__MODULE__, :dependencies, _package, _version} = key, _dependencies} ->
+      {{__MODULE__, :dependencies, _repo, _package, _version} = key, _dependencies} ->
         Process.delete(key)
 
       _other ->
@@ -162,25 +184,36 @@ defmodule HexSolver.Registry.Process do
 
   def packages() do
     Enum.flat_map(Process.get(), fn
-      {{__MODULE__, :versions, package}, _versions} -> [package]
+      {{__MODULE__, :versions, repo, package}, _versions} -> [{repo, package}]
       _other -> []
     end)
   end
 
   def print_code(dependencies) do
     packages = packages()
-    dependencies = Enum.filter(dependencies, &(elem(&1, 0) in packages))
+
+    dependencies =
+      Enum.filter(dependencies, fn %{repo: repo, name: package} ->
+        {repo, package} in packages
+      end)
+
     IO.puts(~s[Registry.put("$root", "1.0.0", #{inspect(dependencies)})])
 
     Enum.each(Process.get(), fn
-      {{__MODULE__, :dependencies, package, version}, dependencies} ->
+      {{__MODULE__, :dependencies, repo, package, version}, dependencies} ->
         dependencies =
-          Enum.map(dependencies, fn {package, requirement, optional, label} ->
-            {package, to_string(requirement), optional: optional, label: label}
+          Enum.map(dependencies, fn %{
+                                      repo: repo,
+                                      name: package,
+                                      constraint: constraint,
+                                      optional: optional,
+                                      label: label
+                                    } ->
+            {package, to_string(constraint), repo: repo, optional: optional, label: label}
           end)
 
         IO.puts(
-          "Registry.put(#{inspect(package)}, #{inspect(to_string(version))}, #{inspect(dependencies)})"
+          "Registry.put(#{inspect(repo)}, #{inspect(package)}, #{inspect(to_string(version))}, #{inspect(dependencies)})"
         )
 
       _other ->

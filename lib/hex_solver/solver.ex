@@ -113,12 +113,11 @@ defmodule HexSolver.Solver do
           {:choice, package_range.name, state}
 
         {:ok, package_range, version} ->
-          name = package_range.name
-
           {lister, incompatibilities} =
             PackageLister.dependencies_as_incompatibilities(
               state.lister,
-              name,
+              package_range.repo,
+              package_range.name,
               version
             )
 
@@ -132,7 +131,7 @@ defmodule HexSolver.Solver do
               # that will eventually choose a better version.
               conflict =
                 conflict or
-                  incompatibility_conflict?(state, incompatibility, name)
+                  incompatibility_conflict?(state, incompatibility, package_range.name)
 
               state = add_incompatibility(state, incompatibility)
               {state, conflict}
@@ -142,12 +141,13 @@ defmodule HexSolver.Solver do
             if conflict do
               state.solution
             else
-              Logger.debug("RESOLVER: selecting #{package_range.name} #{version}")
-              PartialSolution.decide(state.solution, package_range.name, version)
+              package_range = %PackageRange{package_range | constraint: version}
+              Logger.debug("RESOLVER: selecting #{package_range}")
+              PartialSolution.decide(state.solution, package_range)
             end
 
           state = %{state | solution: solution}
-          {:choice, name, state}
+          {:choice, package_range.name, state}
 
         {:error, name} ->
           package_range = %PackageRange{name: name, constraint: Util.any()}
@@ -344,6 +344,11 @@ defmodule HexSolver.Solver do
     version = Version.parse!("1.0.0")
     package_range = %PackageRange{name: "$root", constraint: version}
     root = Incompatibility.new([%Term{positive: false, package_range: package_range}], :root)
+
+    locked =
+      Enum.map(locked, fn %{repo: repo, name: package, version: version, label: label} ->
+        %{repo: repo, name: package, constraint: version, label: label}
+      end)
 
     lister = %PackageLister{
       registry: registry,

@@ -95,10 +95,12 @@ defmodule HexSolver.PartialSolution do
     register(solution, assignment)
   end
 
-  def decide(%PartialSolution{} = solution, package, version) do
+  def decide(
+        %PartialSolution{} = solution,
+        %PackageRange{repo: repo, name: package, constraint: version} = package_range
+      ) do
     attempted_solutions = solution.attempted_solutions + if solution.backtracking, do: 1, else: 0
-    decisions = Map.put(solution.decisions, package, version)
-    package_range = %PackageRange{name: package, constraint: version}
+    decisions = Map.put(solution.decisions, package, {version, repo})
     term = %Term{package_range: package_range, positive: true}
 
     solution = %{

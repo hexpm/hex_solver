@@ -93,7 +93,7 @@ defmodule HexSolver.Case do
     releases = Store.get({:resolver_test, :releases})
 
     Enum.each(releases, fn {package, version, dependencies} ->
-      Registry.put(package, version, dependencies)
+      Registry.put(nil, package, version, dependencies)
     end)
   end
 
@@ -138,18 +138,49 @@ defmodule HexSolver.Case do
   def to_dependencies(dependencies) do
     Enum.map(dependencies, fn
       {package, requirement} ->
-        {package, HexSolver.Requirement.to_constraint!(requirement), false, package}
+        %{
+          repo: nil,
+          name: package,
+          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          optional: false,
+          label: package
+        }
 
       {package, requirement, opts} ->
+        repo = Keyword.get(opts, :repo)
         optional = Keyword.get(opts, :optional, false)
         label = Keyword.get(opts, :label, package)
-        {package, HexSolver.Requirement.to_constraint!(requirement), optional, label}
+
+        %{
+          repo: repo,
+          name: package,
+          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          optional: optional,
+          label: label
+        }
     end)
   end
 
   def to_locked(locked) do
-    Enum.map(locked, fn {package, version} ->
-      {package, HexSolver.Requirement.to_constraint!(version)}
+    Enum.map(locked, fn
+      {package, version} ->
+        %{
+          repo: nil,
+          name: package,
+          version: HexSolver.Requirement.to_constraint!(version),
+          label: package
+        }
+
+      {package, version, opts} ->
+        repo = Keyword.get(opts, :repo)
+        label = Keyword.get(opts, :label, package)
+
+        %{
+          repo: repo,
+          name: package,
+          version: HexSolver.Requirement.to_constraint!(version),
+          label: label
+        }
     end)
   end
 
@@ -173,7 +204,7 @@ defmodule HexSolver.Case do
     fun = fn ->
       packages = Registry.packages()
       dependencies = Enum.filter(dependencies, &(elem(&1, 0) in packages))
-      Registry.put("$root", "1.0.0", dependencies)
+      Registry.put(nil, "$root", "1.0.0", dependencies)
       fun.()
     end
 
@@ -222,8 +253,8 @@ defmodule HexSolver.Case do
   end
 
   defp shrink_versions(fun) do
-    Enum.each(Registry.packages(), fn package ->
-      {:ok, versions} = Registry.versions(package)
+    Enum.each(Registry.packages(), fn {repo, package} ->
+      {:ok, versions} = Registry.versions(repo, package)
 
       Enum.each(versions, fn version ->
         registry = Registry.get_state()
@@ -231,7 +262,7 @@ defmodule HexSolver.Case do
         task =
           Task.async(fn ->
             Registry.restore_state(registry)
-            Registry.drop_version(package, version)
+            Registry.drop_version(repo, package, version)
 
             try do
               case fun.() do
@@ -253,11 +284,11 @@ defmodule HexSolver.Case do
 
           {:ok, false} ->
             IO.puts("SUCCEED SHRINK #{package} #{version}")
-            Registry.drop_version(package, version)
+            Registry.drop_version(repo, package, version)
 
           nil ->
             IO.puts("FAILED SHRINK TIMEOUT #{package} #{version}")
-            Registry.drop_version(package, version)
+            Registry.drop_version(repo, package, version)
         end
       end)
     end)
