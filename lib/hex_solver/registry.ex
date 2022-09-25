@@ -4,7 +4,8 @@ defmodule HexSolver.Registry do
   """
 
   @doc """
-  Returns all versions of the given package or `:error` if the package does not exist.
+  Returns all versions of the given package sorted from lowest to highest or `:error` if the package
+  does not exist.
   """
   @callback versions(HexSolver.repo(), HexSolver.package()) :: {:ok, [Version.t()]} | :error
 
