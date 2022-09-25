@@ -16,7 +16,7 @@ defmodule HexSolver do
           version: Version.t(),
           label: label()
         }
-  @type repo() :: String.t()
+  @type repo() :: String.t() | nil
   @type package() :: String.t()
   @type label() :: String.t()
   @type optional() :: boolean()
