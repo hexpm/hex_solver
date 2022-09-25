@@ -379,7 +379,11 @@ defmodule HexSolver.Incompatibility do
   defp package_name(%Term{package_range: %PackageRange{name: "$lock"}}, opts),
     do: bright("lock", opts)
 
-  defp package_name(%Term{package_range: %PackageRange{name: name}}, opts), do: bright(name, opts)
+  defp package_name(%Term{package_range: %PackageRange{repo: nil, name: name}}, opts),
+    do: bright(name, opts)
+
+  defp package_name(%Term{package_range: %PackageRange{repo: repo, name: name}}, opts),
+    do: bright("#{repo}/#{name}", opts)
 
   defp terse_name(term, opts) do
     if Constraint.any?(term.package_range.constraint) do
