@@ -1,8 +1,6 @@
 # HexSolver
 
-PubGrub based version solver.
-
-To be used by [Hex](https://github.com/hexpm/hex).
+PubGrub based version solver used by [Hex](https://github.com/hexpm/hex).
 
 ### References
 
@@ -19,7 +17,7 @@ by adding `hex_solver` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:hex_solver, "~> 0.1.0"}
+    {:hex_solver, "~> 0.2.0"}
   ]
 end
 ```

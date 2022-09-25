@@ -1,13 +1,13 @@
 defmodule HexSolver.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
+  @version "0.2.0"
   @repo_url "https://github.com/hexpm/hex_solver"
 
   def project do
     [
       app: :hex_solver,
-      version: "0.1.0",
+      version: @version,
       elixir: "~> 1.5",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
