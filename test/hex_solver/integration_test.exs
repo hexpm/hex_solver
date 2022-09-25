@@ -275,7 +275,6 @@ defmodule HexSolver.IntegrationTest do
       cond do
         {package, version} in @expected_failures ->
           assert {:error, incompatibility} = HexSolver.Solver.run(Registry, dependencies, [], [])
-
           assert is_binary(HexSolver.Failure.write(incompatibility))
 
         true ->

@@ -3,11 +3,24 @@ defmodule HexSolver do
   A version solver.
   """
 
-  @type dependency() :: {package(), constraint(), optional(), label()}
-  @type locked() :: {package(), Version.t()}
+  @type dependency() :: %{
+          repo: repo(),
+          name: package(),
+          constraint: constraint(),
+          optional: optional(),
+          label: label()
+        }
+  @type locked() :: %{
+          repo: repo(),
+          name: package(),
+          version: Version.t(),
+          label: label()
+        }
+  @type repo() :: String.t() | nil
   @type package() :: String.t()
   @type label() :: String.t()
   @type optional() :: boolean()
+  @type result() :: %{package() => {Version.t(), repo()}}
   @opaque constraint() :: HexSolver.Requirement.t()
 
   alias HexSolver.{Failure, Requirement, Solver}
@@ -33,7 +46,7 @@ defmodule HexSolver do
 
   """
   @spec run(module(), [dependency()], [locked()], [label()], ansi: boolean()) ::
-          {:ok, %{package() => Version.t()}} | {:error, String.t()}
+          {:ok, result()} | {:error, String.t()}
   def run(registry, dependencies, locked, overrides, opts \\ []) do
     case Solver.run(registry, dependencies, locked, overrides) do
       {:ok, solution} -> {:ok, Map.drop(solution, ["$root", "$lock"])}

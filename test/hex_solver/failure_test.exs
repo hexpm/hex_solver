@@ -91,4 +91,17 @@ defmodule HexSolver.FailureTest do
            So, because "your app" depends on "foo ~> 2.0", version solving failed.\
            """
   end
+
+  test "repo conflict" do
+    Registry.put("foo", "1.0.0", [{"baz", "1.0.0", repo: "a"}])
+    Registry.put("bar", "1.0.0", [{"baz", "1.0.0", repo: "b"}])
+    Registry.put("a", "baz", "1.0.0", [])
+    Registry.put("b", "baz", "1.0.0", [])
+
+    assert run([{"foo", "1.0.0"}, {"bar", "1.0.0"}]) == """
+           Because every version of "bar" depends on "b/baz 1.0.0" and every version of "foo" depends on "a/baz 1.0.0", "bar" is incompatible with "foo".
+           And because "your app" depends on "bar 1.0.0", no version of "foo" is allowed.
+           So, because "your app" depends on "foo 1.0.0", version solving failed.\
+           """
+  end
 end

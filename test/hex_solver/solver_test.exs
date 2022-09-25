@@ -16,8 +16,9 @@ defmodule HexSolver.SolverTest do
     case run do
       {:ok, decisions} ->
         result =
-          Map.new(decisions, fn {package, version} ->
-            {package, to_string(version)}
+          Map.new(decisions, fn
+            {package, {version, nil}} -> {package, to_string(version)}
+            {package, {version, repo}} -> {{repo, package}, to_string(version)}
           end)
 
         assert result["$root"] == "1.0.0"
@@ -34,7 +35,7 @@ defmodule HexSolver.SolverTest do
     end
   end
 
-  describe "run/0 success" do
+  describe "run/4 success" do
     test "no dependencies" do
       assert run([]) == %{}
     end
@@ -141,7 +142,7 @@ defmodule HexSolver.SolverTest do
     end
   end
 
-  describe "run/0 failure" do
+  describe "run/4 failure" do
     test "missing dependency" do
       assert {:conflict, incompatibility, _} = run([{"foo", "1.0.0"}])
       assert [term] = incompatibility.terms
@@ -217,7 +218,7 @@ defmodule HexSolver.SolverTest do
     end
   end
 
-  describe "run/0 locked" do
+  describe "run/4 locked" do
     test "dependency" do
       Registry.put("foo", "1.0.0", [])
 
@@ -253,7 +254,7 @@ defmodule HexSolver.SolverTest do
     end
   end
 
-  describe "run/0 optional" do
+  describe "run/4 optional" do
     test "skip single optional" do
       Registry.put("foo", "1.0.0", [])
 
@@ -355,7 +356,7 @@ defmodule HexSolver.SolverTest do
     end
   end
 
-  describe "run/0 overrides" do
+  describe "run/4 overrides" do
     test "ignores incompatible constraint" do
       Registry.put("foo", "1.0.0", [{"bar", "2.0.0"}])
       Registry.put("bar", "1.0.0", [])
@@ -399,6 +400,32 @@ defmodule HexSolver.SolverTest do
                "bar" => "1.0.0",
                "baz" => "1.0.0"
              }
+    end
+  end
+
+  describe "run/4 repo" do
+    test "success" do
+      Registry.put("foo", "1.0.0", [{"baz", "1.0.0", repo: "a"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0", repo: "a"}])
+      Registry.put("a", "baz", "1.0.0", [])
+
+      assert run([{"foo", "1.0.0"}, {"bar", "1.0.0"}]) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0",
+               {"a", "baz"} => "1.0.0"
+             }
+    end
+
+    test "conflict" do
+      Registry.put("foo", "1.0.0", [{"baz", "1.0.0", repo: "a"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0", repo: "b"}])
+      Registry.put("a", "baz", "1.0.0", [])
+      Registry.put("b", "baz", "1.0.0", [])
+
+      assert {:conflict, incompatibility, _} = run([{"foo", "1.0.0"}, {"bar", "1.0.0"}])
+
+      assert [term] = incompatibility.terms
+      assert term.package_range.name == "foo"
     end
   end
 end

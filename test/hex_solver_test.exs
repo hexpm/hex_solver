@@ -15,7 +15,8 @@ defmodule HexSolverTest do
       Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}])
       Registry.put("bar", "1.0.0", [])
 
-      assert run([{"foo", "~> 1.0"}]) == {:ok, %{"foo" => @version_1, "bar" => @version_1}}
+      assert run([{"foo", "~> 1.0"}]) ==
+               {:ok, %{"foo" => {@version_1, nil}, "bar" => {@version_1, nil}}}
     end
 
     test "failure" do
