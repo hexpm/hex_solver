@@ -401,6 +401,13 @@ defmodule HexSolver.SolverTest do
                "baz" => "1.0.0"
              }
     end
+
+    test "overridden dependencies does not unlock" do
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("foo", "1.1.0", [])
+
+      assert run([{"foo", "~> 1.0"}], [{"foo", "1.0.0"}], ["foo"]) == %{"foo" => "1.0.0"}
+    end
   end
 
   describe "run/4 repo" do

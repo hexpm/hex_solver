@@ -53,7 +53,7 @@ defmodule HexSolver.PackageLister do
       dependencies
       |> Enum.sort()
       |> Enum.reject(fn {_dependency, %{label: label}} ->
-        package != "$root" and label in lister.overrides
+        package not in ["$root", "$lock"] and label in lister.overrides
       end)
       |> Enum.reject(fn {dependency, _} ->
         case Map.fetch(already_returned, dependency) do
