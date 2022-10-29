@@ -87,7 +87,7 @@ defmodule HexSolver.FailureTest do
     Registry.put("foo", "2.0.0", [])
 
     assert run([{"foo", "~> 2.0"}], [{"foo", "1.0.0"}]) == """
-           Because "lock" specifies "foo 1.0.0", "foo 1.0.0" is required.
+           Because "the lock" specifies "foo 1.0.0", "foo 1.0.0" is required.
            So, because "your app" depends on "foo ~> 2.0", version solving failed.\
            """
   end

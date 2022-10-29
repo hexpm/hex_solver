@@ -9,7 +9,7 @@ defmodule HexSolver.PackageRange do
             constraint: nil
 
   def to_string(%PackageRange{name: "$root"}), do: "your app"
-  def to_string(%PackageRange{name: "$lock"}), do: "lock"
+  def to_string(%PackageRange{name: "$lock"}), do: "the lock"
 
   def to_string(%PackageRange{repo: nil, name: name, constraint: constraint}),
     do: "#{name}#{constraint(constraint)}"

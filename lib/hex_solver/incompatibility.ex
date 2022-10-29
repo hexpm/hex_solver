@@ -57,7 +57,7 @@ defmodule HexSolver.Incompatibility do
         },
         opts
       ) do
-    "\"lock\" specifies #{bright_term_abs(dependee, opts)}"
+    "\"the lock\" specifies #{bright_term_abs(dependee, opts)}"
   end
 
   def to_string(
@@ -377,7 +377,7 @@ defmodule HexSolver.Incompatibility do
     do: bright("your app", opts)
 
   defp package_name(%Term{package_range: %PackageRange{name: "$lock"}}, opts),
-    do: bright("lock", opts)
+    do: bright("the lock", opts)
 
   defp package_name(%Term{package_range: %PackageRange{repo: nil, name: name}}, opts),
     do: bright(name, opts)
@@ -397,7 +397,7 @@ defmodule HexSolver.Incompatibility do
     do: bright("your app", opts)
 
   defp terse_every(%Term{package_range: %PackageRange{name: "$lock"}}, opts),
-    do: bright("lock", opts)
+    do: bright("the lock", opts)
 
   defp terse_every(term, opts) do
     if Constraint.any?(term.package_range.constraint) do
