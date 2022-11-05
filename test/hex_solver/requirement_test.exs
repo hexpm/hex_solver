@@ -13,7 +13,7 @@ defmodule HexSolver.RequirementTest do
       end
     end
 
-    test "merge overlapping ranges" do
+    test "union ranges" do
       assert Requirement.to_constraint!("~> 1.0 or ~> 1.1") == %Range{
                min: v("1.0.0"),
                max: v("2.0.0-0"),
@@ -26,6 +26,12 @@ defmodule HexSolver.RequirementTest do
                  %Range{min: v("2.0.0"), max: v("3.0.0-0"), include_min: true}
                ]
              }
+    end
+
+    test "intersect ranges" do
+      assert_raise Version.InvalidRequirementError, fn ->
+        Requirement.to_constraint!("~> 1.0 and ~> 1.1")
+      end
     end
   end
 end
