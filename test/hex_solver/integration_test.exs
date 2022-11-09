@@ -282,4 +282,37 @@ defmodule HexSolver.IntegrationTest do
       end
     end
   end
+
+  test "temp" do
+    load_registry()
+
+    {package, version, dependencies} =
+      {"guard", "0.12.1",
+       [
+         {"bamboo", "~> 1.1.0", [optional: false, label: "bamboo"]},
+         {"bcrypt_elixir", "~> 1.1.1", [optional: false, label: "bcrypt_elixir"]},
+         {"comeonin", "~> 4.1.1", [optional: false, label: "comeonin"]},
+         {"ecto", "~> 2.2 or ~> 3.0", [optional: false, label: "ecto"]},
+         {"ecto_sql", "~> 3.0", [optional: true, label: "ecto_sql"]},
+         {"gettext", "~> 0.15 or ~> 0.16", [optional: false, label: "gettext"]},
+         {"guardian", "~> 1.2.0", [optional: false, label: "guardian"]},
+         {"jason", "~> 1.1.2", [optional: false, label: "jason"]},
+         {"phoenix", "~> 1.3 or ~> 1.4", [optional: false, label: "phoenix"]},
+         {"plug_cowboy", "~> 1.0 or ~> 2.0", [optional: false, label: "plug_cowboy"]},
+         {"tesla", "~> 1.2.1", [optional: false, label: "tesla"]}
+       ]}
+
+    Registry.reset_prefetch()
+    dependencies = to_dependencies(dependencies)
+
+    cond do
+      {package, version} in @expected_failures ->
+        assert {:error, incompatibility} = HexSolver.Solver.run(Registry, dependencies, [], [])
+        assert is_binary(HexSolver.Failure.write(incompatibility))
+
+      true ->
+        # assert {:ok, _} = IO.inspect(HexSolver.Solver.run(Registry, dependencies, [], []))
+        assert {:ok, _} = HexSolver.Solver.run(Registry, dependencies, [], [])
+    end
+  end
 end

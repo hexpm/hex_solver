@@ -267,6 +267,18 @@ defmodule HexSolver.SolverTest do
       assert run([{"foo", "1.0.0", optional: true}], [{"foo", "1.0.0"}]) == %{}
     end
 
+    test "skip conflicting optionals" do
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"car", "~> 1.0", optional: true}])
+      Registry.put("bar", "1.0.0", [{"car", "~> 2.0", optional: true}])
+      Registry.put("car", "1.0.0", [])
+      Registry.put("car", "2.0.0", [])
+
+      assert run([{"foo", "1.0.0"}], []) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0"
+             }
+    end
+
     test "skip transitive optionals" do
       # car's fuse dependency needs to be a subset of bar's fuse dependency
       # fuse 1.0.0 ⊃ fuse ~> 1.0
@@ -283,16 +295,24 @@ defmodule HexSolver.SolverTest do
              }
     end
 
-    test "locked optional conflicts" do
+    test "skip conflicting transitive optionals" do
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0"}, {"car", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [{"fuse", "~> 1.0", optional: true}])
+      Registry.put("car", "1.0.0", [{"fuse", "~> 2.0", optional: true}])
+      Registry.put("fuse", "1.0.0", [])
+      Registry.put("fuse", "2.0.0", [])
+
+      assert run([{"foo", "1.0.0"}], []) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0",
+               "car" => "1.0.0"
+             }
+    end
+
+    test "locked optional does not conflict" do
       Registry.put("foo", "1.0.0", [])
 
-      assert {:conflict, incompatibility, _} =
-               run([{"foo", "1.0.0", optional: true}], [{"foo", "1.1.0"}])
-
-      assert [term] = incompatibility.terms
-      assert term.package_range.name == "foo"
-      assert term.package_range.constraint == Version.parse!("1.1.0")
-      assert {:conflict, _, _} = incompatibility.cause
+      assert run([{"foo", "1.0.0", optional: true}], [{"foo", "1.1.0"}]) == %{}
     end
 
     test "skip optional with backtrack" do
