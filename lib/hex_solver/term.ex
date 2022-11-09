@@ -11,8 +11,6 @@ defmodule HexSolver.Term do
             optional: false
 
   def relation(%Term{} = left, %Term{} = right) do
-    compatible_package?(left, right)
-
     left_constraint = constraint(left)
     right_constraint = constraint(right)
 
