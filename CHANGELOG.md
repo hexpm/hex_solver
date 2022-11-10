@@ -1,6 +1,15 @@
 # CHANGELOG
 
-## v0.2.0
+## v0.2.1 (2022-11-10)
+
+### Bug fixes
+
+  * Do not override locked deps.
+  * Change "lock" to "the lock" in failure message.
+  * Raise when parsing intersected ranges.
+  * Skip unselected optionals during solving.
+
+## v0.2.0 (2022-09-25)
 
 ### Enhancements
 
