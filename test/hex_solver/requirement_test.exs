@@ -32,6 +32,12 @@ defmodule HexSolver.RequirementTest do
       assert_raise Version.InvalidRequirementError, fn ->
         Requirement.to_constraint!("~> 1.0 and ~> 1.1")
       end
+
+      assert Requirement.to_constraint!("~> 1.11 and >= 1.11.6") == %Range{
+               min: v("1.11.6"),
+               max: v("2.0.0-0"),
+               include_min: true
+             }
     end
   end
 end

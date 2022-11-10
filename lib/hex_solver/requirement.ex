@@ -1,7 +1,7 @@
 defmodule HexSolver.Requirement do
   @moduledoc false
 
-  alias HexSolver.Constraints.{Range, Util, Version}
+  alias HexSolver.Constraints.{Range, Util}
   alias HexSolver.Requirement.Parser
 
   @allowed_range_ops [:>, :>=, :<, :<=, :~>]
@@ -108,12 +108,7 @@ defmodule HexSolver.Requirement do
     range1 = to_range(:~>, version1)
     range2 = to_range(op2, version2)
 
-    range = %Range{
-      min: version_min(range1.min, range2.min),
-      max: version_max(range1.max, range2.max),
-      include_min: range1.include_min or range2.include_min,
-      include_max: range1.include_max or range2.include_max
-    }
+    range = Range.intersect(range1, range2)
 
     unless Range.valid?(range) and Range.allows_any?(range1, range2) do
       throw({__MODULE__, :invalid_constraint})
@@ -145,14 +140,6 @@ defmodule HexSolver.Requirement do
 
     range
   end
-
-  defp version_min(nil, _right), do: nil
-  defp version_min(_left, nil), do: nil
-  defp version_min(left, right), do: Version.min(left, right)
-
-  defp version_max(nil, _right), do: nil
-  defp version_max(_left, nil), do: nil
-  defp version_max(left, right), do: Version.max(left, right)
 
   defp to_version({major, minor, patch, pre, _build}),
     do: %Elixir.Version{major: major, minor: minor, patch: patch, pre: pre}
