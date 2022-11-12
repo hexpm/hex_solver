@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.2.2 (2022-11-12)
+
+### Bug fixes
+
+  * Fix intersection of ranges during parsing.
+
 ## v0.2.1 (2022-11-10)
 
 ### Bug fixes

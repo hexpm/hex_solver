@@ -1,7 +1,7 @@
 defmodule HexSolver.MixProject do
   use Mix.Project
 
-  @version "0.2.1"
+  @version "0.2.2"
   @repo_url "https://github.com/hexpm/hex_solver"
 
   def project do
