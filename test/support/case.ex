@@ -141,7 +141,7 @@ defmodule HexSolver.Case do
         %{
           repo: nil,
           name: package,
-          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          constraint: to_constraint(requirement),
           optional: false,
           label: package,
           dependencies: []
@@ -156,7 +156,7 @@ defmodule HexSolver.Case do
         %{
           repo: repo,
           name: package,
-          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          constraint: to_constraint(requirement),
           optional: optional,
           label: label,
           dependencies: to_dependencies(dependencies)
@@ -186,6 +186,9 @@ defmodule HexSolver.Case do
         }
     end)
   end
+
+  defp to_constraint(nil), do: %HexSolver.Constraints.Range{}
+  defp to_constraint(requirement), do: HexSolver.Requirement.to_constraint!(requirement)
 
   def inspect_incompatibility(incompatibility) do
     inspect_incompatibility(incompatibility, "")
