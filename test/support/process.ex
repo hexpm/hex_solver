@@ -48,7 +48,8 @@ defmodule HexSolver.Registry.Process do
             name: package,
             constraint: HexSolver.Requirement.to_constraint!(requirement),
             optional: false,
-            label: package
+            label: package,
+            dependencies: []
           }
 
         {package, requirement, opts} ->
@@ -61,7 +62,8 @@ defmodule HexSolver.Registry.Process do
             name: package,
             constraint: HexSolver.Requirement.to_constraint!(requirement),
             optional: optional,
-            label: label
+            label: label,
+            dependencies: []
           }
       end)
 

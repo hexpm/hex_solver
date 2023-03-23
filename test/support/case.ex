@@ -143,20 +143,23 @@ defmodule HexSolver.Case do
           name: package,
           constraint: HexSolver.Requirement.to_constraint!(requirement),
           optional: false,
-          label: package
+          label: package,
+          dependencies: []
         }
 
       {package, requirement, opts} ->
         repo = Keyword.get(opts, :repo)
         optional = Keyword.get(opts, :optional, false)
         label = Keyword.get(opts, :label, package)
+        dependencies = Keyword.get(opts, :dependencies, [])
 
         %{
           repo: repo,
           name: package,
           constraint: HexSolver.Requirement.to_constraint!(requirement),
           optional: optional,
-          label: label
+          label: label,
+          dependencies: to_dependencies(dependencies)
         }
     end)
   end
