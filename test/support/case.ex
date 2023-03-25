@@ -141,22 +141,25 @@ defmodule HexSolver.Case do
         %{
           repo: nil,
           name: package,
-          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          constraint: to_constraint(requirement),
           optional: false,
-          label: package
+          label: package,
+          dependencies: []
         }
 
       {package, requirement, opts} ->
         repo = Keyword.get(opts, :repo)
         optional = Keyword.get(opts, :optional, false)
         label = Keyword.get(opts, :label, package)
+        dependencies = Keyword.get(opts, :dependencies, [])
 
         %{
           repo: repo,
           name: package,
-          constraint: HexSolver.Requirement.to_constraint!(requirement),
+          constraint: to_constraint(requirement),
           optional: optional,
-          label: label
+          label: label,
+          dependencies: to_dependencies(dependencies)
         }
     end)
   end
@@ -183,6 +186,9 @@ defmodule HexSolver.Case do
         }
     end)
   end
+
+  defp to_constraint(nil), do: %HexSolver.Constraints.Range{}
+  defp to_constraint(requirement), do: HexSolver.Requirement.to_constraint!(requirement)
 
   def inspect_incompatibility(incompatibility) do
     inspect_incompatibility(incompatibility, "")

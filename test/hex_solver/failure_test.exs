@@ -104,4 +104,18 @@ defmodule HexSolver.FailureTest do
            So, because "your app" depends on "foo 1.0.0", version solving failed.\
            """
   end
+
+  test "sub dependencies" do
+    Registry.put("foo", "1.0.0", [])
+    Registry.put("foo", "2.0.0", [])
+
+    assert run([
+             {"top1", nil, dependencies: [{"foo", "~> 1.0"}]},
+             {"top2", nil, dependencies: [{"foo", "~> 2.0"}]}
+           ]) == """
+           Because every version of "top1" depends on "foo ~> 1.0" and every version of "top2" depends on "foo ~> 2.0", "top1" is incompatible with "top2".
+           And because "your app" depends on "top1", no version of "top2" is allowed.
+           So, because "your app" depends on "top2", version solving failed.\
+           """
+  end
 end

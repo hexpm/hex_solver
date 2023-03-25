@@ -140,6 +140,17 @@ defmodule HexSolver.SolverTest do
 
       assert run([{"foo", "1.0.0"}]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
+
+    test "sub dependencies" do
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("foo", "2.0.0", [])
+
+      assert {:conflict, _, _} =
+               run([
+                 {"top1", "1.0.0", dependencies: [{"foo", "~> 1.0"}]},
+                 {"top2", "1.0.0", dependencies: [{"foo", "~> 2.0"}]}
+               ])
+    end
   end
 
   describe "run/4 failure" do
