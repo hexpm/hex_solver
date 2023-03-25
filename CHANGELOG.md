@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## v0.3.0 (2023-03-25)
+
+### Enhancements
+
+  * Add sub dependencies.
+
 ## v0.2.2 (2022-11-12)
 
 ### Bug fixes
