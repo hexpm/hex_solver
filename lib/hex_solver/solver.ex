@@ -116,7 +116,7 @@ defmodule HexSolver.Solver do
           state = add_incompatibility(state, incompatibility)
           {:choice, package_range.name, state}
 
-        {:ok, package_range, version} ->
+        {:ok, %PackageRange{} = package_range, version} ->
           {lister, incompatibilities} =
             PackageLister.dependencies_as_incompatibilities(
               state.lister,
@@ -153,7 +153,7 @@ defmodule HexSolver.Solver do
           state = %{state | solution: solution}
           {:choice, package_range.name, state}
 
-        {:error, package_range} ->
+        {:error, %PackageRange{} = package_range} ->
           package_range = %PackageRange{package_range | constraint: Util.any()}
           term = %Term{positive: true, package_range: package_range}
           incompatibility = Incompatibility.new([term], :package_not_found)
