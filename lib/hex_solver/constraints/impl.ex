@@ -32,6 +32,9 @@ defmodule HexSolver.Constraints.Impl do
 
         def compare(left, right),
           do: unquote(__CALLER__.module).compare(left, right)
+
+        def to_requirement(constraint),
+          do: unquote(__CALLER__.module).to_requirement(constraint)
       end
     end
   end

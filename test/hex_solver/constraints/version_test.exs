@@ -196,4 +196,8 @@ defmodule HexSolver.Constraints.VersionTest do
       assert Range.single_version?(Version.to_range(version))
     end
   end
+
+  test "to_requirement/1" do
+    assert Constraint.to_requirement(v("1.2.3")) == "1.2.3"
+  end
 end

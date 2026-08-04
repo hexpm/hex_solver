@@ -64,6 +64,12 @@ defmodule HexSolver.Constraints.UnionTest do
     end
   end
 
+  test "to_requirement/1" do
+    union = %Union{ranges: [v("1.0.0"), %HexSolver.Constraints.Range{min: v("2.0.0")}]}
+
+    assert Constraint.to_requirement(union) == "1.0.0 or > 2.0.0"
+  end
+
   property "Kernel.inspect/1" do
     check all union <- union() do
       assert is_binary(inspect(union))

@@ -99,6 +99,10 @@ defmodule HexSolver.Constraints.Version do
     end
   end
 
+  def to_requirement(%Version{} = version) do
+    Kernel.to_string(version)
+  end
+
   def max(left, right) do
     case compare(left, right) do
       :lt -> right

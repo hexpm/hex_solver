@@ -2,6 +2,7 @@ defmodule HexSolver.Constraints.RangeTest do
   use HexSolver.Case, async: true
   use ExUnitProperties
 
+  alias HexSolver.Constraint
   alias HexSolver.Constraints.{Empty, Range, Union, Util, Version}
 
   describe "valid?/1" do
@@ -722,6 +723,14 @@ defmodule HexSolver.Constraints.RangeTest do
     check all range <- range() do
       assert is_binary(Range.to_string(range))
     end
+  end
+
+  test "to_string/1 describes any range" do
+    assert Range.to_string(%Range{}) == "any"
+  end
+
+  test "to_requirement/1 serializes any range" do
+    assert Constraint.to_requirement(%Range{}) == ">= 0.0.0-0"
   end
 
   property "Kernel.inspect/1" do
