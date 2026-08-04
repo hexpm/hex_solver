@@ -381,6 +381,14 @@ defmodule HexSolver.Constraints.Range do
   def normalize(%Range{} = range), do: range
   def normalize(%Elixir.Version{} = version), do: version
 
+  def to_requirement(%Range{min: nil, max: nil}) do
+    ">= 0.0.0-0"
+  end
+
+  def to_requirement(%Range{} = range) do
+    Range.to_string(range)
+  end
+
   def to_string(%Range{min: nil, max: nil}) do
     "any"
   end

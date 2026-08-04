@@ -17,6 +17,10 @@ defmodule HexSolver.Constraints.EmptyTest do
     assert Empty.to_string(%Empty{}) == "empty"
   end
 
+  test "to_requirement/1" do
+    assert Constraint.to_requirement(%Empty{}) == "< 0.0.0-0"
+  end
+
   test "Kernel.inspect/1" do
     assert inspect(%Empty{}) == "#Empty<>"
   end

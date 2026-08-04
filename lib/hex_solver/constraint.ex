@@ -10,4 +10,5 @@ defprotocol HexSolver.Constraint do
   def intersect(left, right)
   def union(left, right)
   def compare(left, right)
+  def to_requirement(constraint)
 end

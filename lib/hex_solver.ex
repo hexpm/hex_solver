@@ -24,7 +24,7 @@ defmodule HexSolver do
   @type result() :: %{package() => {Version.t(), repo()}}
   @opaque constraint() :: HexSolver.Requirement.t()
 
-  alias HexSolver.{Failure, Requirement, Solver}
+  alias HexSolver.{Constraint, Failure, Requirement, Solver}
 
   @doc """
   Runs the version solver.
@@ -82,5 +82,15 @@ defmodule HexSolver do
   @spec parse_constraint!(String.t() | Version.t() | Version.Requirement.t()) :: constraint()
   def parse_constraint!(string) do
     Requirement.to_constraint!(string)
+  end
+
+  @doc """
+  Serializes an internal solver constraint as an Elixir version requirement.
+  """
+  @spec constraint_to_requirement!(constraint()) :: String.t()
+  def constraint_to_requirement!(constraint) do
+    requirement = Constraint.to_requirement(constraint)
+    Version.parse_requirement!(requirement)
+    requirement
   end
 end

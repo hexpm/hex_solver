@@ -179,4 +179,13 @@ defmodule HexSolver.ConstraintTest do
       end
     end
   end
+
+  property "constraint requirements round-trip" do
+    check all constraint <- constraint() do
+      requirement = Constraint.to_requirement(constraint)
+
+      assert {:ok, _requirement} = Version.parse_requirement(requirement)
+      assert HexSolver.parse_constraint!(requirement) == constraint
+    end
+  end
 end

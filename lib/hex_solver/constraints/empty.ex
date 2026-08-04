@@ -34,6 +34,10 @@ defmodule HexSolver.Constraints.Empty do
       clauses: []
   end
 
+  def to_requirement(%Empty{}) do
+    "< 0.0.0-0"
+  end
+
   def to_string(%Empty{}) do
     "empty"
   end

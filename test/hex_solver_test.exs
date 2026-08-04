@@ -2,7 +2,7 @@ defmodule HexSolverTest do
   use HexSolver.Case, async: true
 
   alias HexSolver.Registry.Process, as: Registry
-  alias HexSolver.Constraints.Range
+  alias HexSolver.Constraints.{Empty, Range}
 
   defp run(dependencies) do
     HexSolver.run(Registry, to_dependencies(dependencies), [], [])
@@ -61,6 +61,38 @@ defmodule HexSolverTest do
 
     assert_raise Version.InvalidRequirementError, fn ->
       HexSolver.parse_constraint!("1.2.3.4")
+    end
+  end
+
+  describe "constraint_to_requirement!/1" do
+    test "serializes any constraint as a valid requirement" do
+      requirement = HexSolver.constraint_to_requirement!(%Range{})
+
+      assert requirement == ">= 0.0.0-0"
+      assert {:ok, _requirement} = Version.parse_requirement(requirement)
+      assert HexSolver.parse_constraint!(requirement) == %Range{}
+    end
+
+    test "serializes version constraints" do
+      assert HexSolver.constraint_to_requirement!(Version.parse!("1.2.3")) == "1.2.3"
+    end
+
+    test "serializes bounded range constraints" do
+      constraint = HexSolver.parse_constraint!("~> 1.2")
+      assert HexSolver.constraint_to_requirement!(constraint) == "~> 1.2"
+    end
+
+    test "serializes union constraints" do
+      constraint = HexSolver.parse_constraint!("~> 1.0 or ~> 2.0")
+      assert HexSolver.constraint_to_requirement!(constraint) == "~> 1.0 or ~> 2.0"
+    end
+
+    test "serializes empty constraint as a valid requirement" do
+      requirement = HexSolver.constraint_to_requirement!(%Empty{})
+
+      assert requirement == "< 0.0.0-0"
+      assert {:ok, _requirement} = Version.parse_requirement(requirement)
+      assert HexSolver.parse_constraint!(requirement) == %Empty{}
     end
   end
 end
