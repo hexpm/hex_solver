@@ -49,7 +49,7 @@ defmodule HexSolver.Constraints.Range do
     Enum.all?(ranges, &allows_all?(range, &1))
   end
 
-  def allows_any?(%Range{}, %Empty{}), do: true
+  def allows_any?(%Range{}, %Empty{}), do: false
   def allows_any?(%Range{} = range, %Elixir.Version{} = version), do: allows?(range, version)
 
   def allows_any?(%Range{} = left, %Range{} = right) do

@@ -44,7 +44,7 @@ defmodule HexSolver.Constraints.Union do
   defp do_allows_all?(_lefts, []), do: true
   defp do_allows_all?([], _rights), do: false
 
-  def allows_any?(%Union{}, %Empty{}), do: true
+  def allows_any?(%Union{}, %Empty{}), do: false
 
   def allows_any?(%Union{} = left, right) do
     do_allows_any?(to_ranges(left), to_ranges(right))

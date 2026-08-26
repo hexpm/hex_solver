@@ -14,7 +14,7 @@ defmodule HexSolver.Constraints.Version do
 
   def allows?(%Version{} = left, %Version{} = right), do: left == right
 
-  def allows_any?(%Version{}, %Empty{}), do: true
+  def allows_any?(%Version{}, %Empty{}), do: false
   def allows_any?(%Version{} = left, right), do: Constraint.allows?(right, left)
 
   def allows_all?(%Version{}, %Empty{}) do
