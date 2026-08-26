@@ -78,6 +78,9 @@ defmodule HexSolver do
   @doc """
   Parses or converts a SemVer version or Elixir version requirement to an internal solver constraint
   that can be returned by the `HexSolver.Registry` or passed to `HexSolver.run/4`.
+
+  Raises `Version.InvalidRequirementError` if the requirement is invalid and
+  `HexSolver.UnsatisfiableRequirementError` if no version can satisfy it.
   """
   @spec parse_constraint!(String.t() | Version.t() | Version.Requirement.t()) :: constraint()
   def parse_constraint!(string) do

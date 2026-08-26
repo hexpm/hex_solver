@@ -156,7 +156,7 @@ defmodule HexSolver.Constraints.RangeTest do
   describe "allows_any?/2" do
     property "with empty" do
       check all range <- range() do
-        assert Range.allows_any?(range, %Empty{})
+        refute Range.allows_any?(range, %Empty{})
       end
     end
 

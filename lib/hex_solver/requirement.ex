@@ -1,10 +1,9 @@
 defmodule HexSolver.Requirement do
   @moduledoc false
 
+  alias HexSolver.{Constraint, UnsatisfiableRequirementError}
   alias HexSolver.Constraints.{Empty, Range, Util}
   alias HexSolver.Requirement.Parser
-
-  @allowed_range_ops [:>, :>=, :<, :<=, :~>]
 
   def to_constraint(string) when is_binary(string) do
     case Parser.parse(string) do
@@ -12,7 +11,7 @@ defmodule HexSolver.Requirement do
       :error -> :error
     end
   catch
-    {__MODULE__, :invalid_constraint} ->
+    {__MODULE__, :unsatisfiable, _left, _right} ->
       :error
   end
 
@@ -30,8 +29,8 @@ defmodule HexSolver.Requirement do
       :error -> raise Elixir.Version.InvalidRequirementError, string
     end
   catch
-    {__MODULE__, :invalid_constraint} ->
-      raise Elixir.Version.InvalidRequirementError, string
+    {__MODULE__, :unsatisfiable, left, right} ->
+      raise UnsatisfiableRequirementError, requirement: string, left: left, right: right
   end
 
   def to_constraint!(%Elixir.Version{} = version) do
@@ -52,14 +51,32 @@ defmodule HexSolver.Requirement do
     delex(rest, acc)
   end
 
-  defp delex([op1, version1, op, op2, version2 | rest], acc) when op in [:&&, :and] do
-    range = to_range(op1, version1, op2, version2)
-    delex(rest, [range | acc])
+  defp delex(lexed, acc) do
+    {constraints, rest} = take_intersection(lexed, [])
+    delex(rest, [intersect(constraints) | acc])
   end
 
-  defp delex([op, version | rest], acc) do
-    range = to_range(op, version)
-    delex(rest, [range | acc])
+  defp take_intersection([op, version, and_op | rest], acc) when and_op in [:&&, :and] do
+    take_intersection(rest, [to_range(op, version) | acc])
+  end
+
+  defp take_intersection([op, version | rest], acc) do
+    {Enum.reverse([to_range(op, version) | acc]), rest}
+  end
+
+  defp intersect([constraint | constraints]) do
+    Enum.reduce(constraints, constraint, fn constraint, intersection ->
+      case Constraint.intersect(intersection, constraint) do
+        %Empty{} ->
+          throw(
+            {__MODULE__, :unsatisfiable, Constraint.to_requirement(intersection),
+             Constraint.to_requirement(constraint)}
+          )
+
+        intersection ->
+          intersection
+      end
+    end)
   end
 
   defp to_range(:==, version) do
@@ -96,51 +113,6 @@ defmodule HexSolver.Requirement do
 
   defp to_range(:<=, version) do
     %Range{max: to_version(version), include_max: true}
-  end
-
-  defp to_range(:~>, _version1, :~>, _version2) do
-    throw({__MODULE__, :invalid_constraint})
-  end
-
-  defp to_range(op1, version1, :~>, version2) do
-    to_range(:~>, version2, op1, version1)
-  end
-
-  defp to_range(:~>, version1, op2, version2) do
-    range1 = to_range(:~>, version1)
-    range2 = to_range(op2, version2)
-
-    range = Range.intersect(range1, range2)
-
-    unless Range.valid?(range) and Range.allows_any?(range1, range2) do
-      throw({__MODULE__, :invalid_constraint})
-    end
-
-    range
-  end
-
-  defp to_range(op1, version1, op2, version2)
-       when op1 in @allowed_range_ops and op2 in @allowed_range_ops do
-    range =
-      Map.merge(to_range(op1, version1), to_range(op2, version2), fn
-        :__struct__, Range, Range -> Range
-        :min, nil, value -> value
-        :min, value, nil -> value
-        :max, nil, value -> value
-        :max, value, nil -> value
-        :include_min, value, value -> value
-        :include_min, false, value -> value
-        :include_min, value, false -> value
-        :include_max, value, value -> value
-        :include_max, false, value -> value
-        :include_max, value, false -> value
-      end)
-
-    unless Range.valid?(range) do
-      throw({__MODULE__, :invalid_constraint})
-    end
-
-    range
   end
 
   defp to_version({major, minor, patch, pre, _build}),

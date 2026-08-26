@@ -123,6 +123,14 @@ defmodule HexSolver.SolverTest do
              }
     end
 
+    test "backtrack from unsatisfiable dependency" do
+      Registry.put("foo", "1.1.0", [{"bar", "< 0.0.0-0"}])
+      Registry.put("foo", "1.0.0", [{"bar", "~> 1.0"}])
+      Registry.put("bar", "1.0.0", [])
+
+      assert run([{"foo", "~> 1.0"}]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
+    end
+
     test "overlapping ranges" do
       Registry.put("phoenix_live_view", "1.0.0", [{"phoenix", "~> 1.0 or ~> 2.0"}])
       Registry.put("phoenix_live_view", "1.1.0", [{"phoenix", "~> 2.1"}])
@@ -170,6 +178,16 @@ defmodule HexSolver.SolverTest do
       assert term.package_range.name == "foo"
       assert term.package_range.constraint == Version.parse!("1.0.0")
       assert incompatibility.cause == :no_versions
+    end
+
+    test "unsatisfiable dependency" do
+      Registry.put("foo", "1.0.0", [{"bar", "< 0.0.0-0"}])
+      Registry.put("bar", "1.0.0", [])
+
+      assert {:conflict, incompatibility, _} = run([{"foo", "1.0.0"}])
+      assert [term] = incompatibility.terms
+      assert term.package_range.name == "foo"
+      assert {:conflict, %{cause: :dependency}, %{cause: :no_versions}} = incompatibility.cause
     end
 
     test "no matching transient dependency 1" do

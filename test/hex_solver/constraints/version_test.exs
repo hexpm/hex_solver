@@ -24,6 +24,12 @@ defmodule HexSolver.Constraints.VersionTest do
     end
   end
 
+  property "allows_any?/2 with empty" do
+    check all version <- version() do
+      refute Version.allows_any?(version, %Empty{})
+    end
+  end
+
   property "allows_any?/2" do
     check all version <- version(),
               constraint <- constraint() do
