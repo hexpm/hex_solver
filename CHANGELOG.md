@@ -1,6 +1,25 @@
 # CHANGELOG
 
-## v0.3.0 (2023-03-25)
+## v0.3.0 (2026-08-27)
+
+### Enhancements
+
+  * Add `HexSolver.constraint_to_requirement!/1` to serialize constraints as
+    version requirements.
+  * Parse `>= 0.0.0-0` as an unconstrained range and `< 0.0.0-0` as an empty
+    constraint.
+  * Accept intersections of pessimistic ranges such as `~> 1.0.0 and ~> 1.0`.
+  * Raise `HexSolver.UnsatisfiableRequirementError` for requirements with
+    disjoint ranges such as `~> 1.0 and >= 2.0.0`.
+  * Require Elixir 1.12 or later.
+
+### Bug fixes
+
+  * Fix `FunctionClauseError` when parsing `and` chains with more than two
+    terms, two bounds in the same direction, or `==`.
+  * Fix infinite loop when a dependency has an empty constraint.
+
+## v0.2.3 (2023-03-25)
 
 ### Enhancements
 

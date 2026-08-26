@@ -17,7 +17,7 @@ by adding `hex_solver` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:hex_solver, "~> 0.2.0"}
+    {:hex_solver, "~> 0.3.0"}
   ]
 end
 ```
