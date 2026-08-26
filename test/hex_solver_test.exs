@@ -46,6 +46,7 @@ defmodule HexSolverTest do
     assert HexSolver.parse_constraint(Version.parse!("1.0.0")) == Version.parse("1.0.0")
 
     assert HexSolver.parse_constraint("1.2.3.4") == :error
+    assert HexSolver.parse_constraint("~> 1.0 and >= 2.0.0") == :error
   end
 
   test "parse_constraint!/1" do
@@ -58,6 +59,10 @@ defmodule HexSolverTest do
            }
 
     assert HexSolver.parse_constraint!(Version.parse!("1.0.0")) == Version.parse!("1.0.0")
+
+    assert_raise HexSolver.UnsatisfiableRequirementError, fn ->
+      HexSolver.parse_constraint!("~> 1.0 and >= 2.0.0")
+    end
 
     assert_raise Version.InvalidRequirementError, fn ->
       HexSolver.parse_constraint!("1.2.3.4")
