@@ -157,7 +157,7 @@ defmodule HexSolver.Constraints.Union do
   end
 
   def to_string(%Union{ranges: ranges}) do
-    Enum.map_join(ranges, " or ", &Kernel.to_string/1)
+    Enum.map_join(ranges, " or ", &Constraint.to_string/1)
   end
 
   defimpl String.Chars do
@@ -166,7 +166,7 @@ defmodule HexSolver.Constraints.Union do
 
   defimpl Inspect do
     def inspect(union, _opts) do
-      "#Union<#{union}>"
+      "#Union<#{HexSolver.Constraints.Union.to_string(union)}>"
     end
   end
 end

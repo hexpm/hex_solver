@@ -118,4 +118,63 @@ defmodule HexSolver.FailureTest do
            So, because "your app" depends on "top2", version solving failed.\
            """
   end
+
+  # Projects consolidate String.Chars without the impls from archives, such as
+  # Hex which vendors the solver, so formatting can't dispatch on solver structs
+  test "formats failures without String.Chars dispatch on solver structs" do
+    Registry.put("foo", "1.0.0", [{"bar", "~> 2.0 or ~> 3.0"}])
+    Registry.put("bar", "1.0.0", [])
+    Registry.put("bar", "2.0.0", [{"baz", "~> 2.0"}])
+    Registry.put("baz", "1.0.0", [])
+
+    dispatched =
+      trace_string_chars(fn ->
+        assert {:error, incompatibility} =
+                 HexSolver.Solver.run(
+                   Registry,
+                   to_dependencies([{"foo", "~> 1.0"}, {"baz", "~> 1.0"}]),
+                   [],
+                   []
+                 )
+
+        Failure.write(incompatibility)
+        Failure.write(incompatibility, ansi: true)
+        inspect(incompatibility)
+      end)
+
+    assert dispatched != []
+    refute Enum.any?(dispatched, &solver_struct?/1)
+  end
+
+  defp trace_string_chars(fun) do
+    tracer = spawn_link(fn -> collect_string_chars([]) end)
+    :erlang.trace_pattern({String.Chars, :to_string, 1}, true, [])
+    :erlang.trace(self(), true, [:call, {:tracer, tracer}])
+
+    try do
+      fun.()
+    after
+      :erlang.trace(self(), false, [:call])
+      :erlang.trace_pattern({String.Chars, :to_string, 1}, false, [])
+    end
+
+    ref = :erlang.trace_delivered(self())
+    assert_receive {:trace_delivered, _pid, ^ref}
+    send(tracer, {:values, self()})
+    assert_receive {:values, values}
+    values
+  end
+
+  defp collect_string_chars(values) do
+    receive do
+      {:trace, _pid, :call, {String.Chars, :to_string, [value]}} ->
+        collect_string_chars([value | values])
+
+      {:values, pid} ->
+        send(pid, {:values, values})
+    end
+  end
+
+  defp solver_struct?(%module{}), do: String.starts_with?(inspect(module), "HexSolver.")
+  defp solver_struct?(_value), do: false
 end

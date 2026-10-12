@@ -73,7 +73,7 @@ defmodule HexSolver.Incompatibility do
   def to_string(%Incompatibility{cause: :no_versions, terms: terms}, opts) do
     [%Term{positive: true} = term] = terms
 
-    "no versions of #{package_name(term, opts)} match #{bright(term.package_range.constraint, opts)}"
+    "no versions of #{package_name(term, opts)} match #{bright(Constraint.to_string(term.package_range.constraint), opts)}"
   end
 
   def to_string(%Incompatibility{cause: :package_not_found, terms: terms}, opts) do
@@ -83,7 +83,8 @@ defmodule HexSolver.Incompatibility do
 
   def to_string(%Incompatibility{cause: :root, terms: terms}, opts) do
     [%Term{positive: false} = term] = terms
-    "#{package_name(term, opts)} is #{bright(term.package_range.constraint, opts)}"
+
+    "#{package_name(term, opts)} is #{bright(Constraint.to_string(term.package_range.constraint), opts)}"
   end
 
   def to_string(%Incompatibility{terms: []}, _opts) do
@@ -409,7 +410,7 @@ defmodule HexSolver.Incompatibility do
 
   defp term_abs(%Term{} = term), do: %Term{term | positive: true}
 
-  defp bright_term_abs(term, opts), do: bright(term_abs(term), opts)
+  defp bright_term_abs(term, opts), do: bright(Term.to_string(term_abs(term)), opts)
 
   defimpl String.Chars do
     defdelegate to_string(incompatibility), to: HexSolver.Incompatibility

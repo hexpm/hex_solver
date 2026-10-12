@@ -35,6 +35,9 @@ defmodule HexSolver.Constraints.Impl do
 
         def to_requirement(constraint),
           do: unquote(__CALLER__.module).to_requirement(constraint)
+
+        def to_string(constraint),
+          do: unquote(__CALLER__.module).to_string(constraint)
       end
     end
   end

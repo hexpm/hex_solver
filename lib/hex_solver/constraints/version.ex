@@ -103,6 +103,10 @@ defmodule HexSolver.Constraints.Version do
     Kernel.to_string(version)
   end
 
+  def to_string(%Version{} = version) do
+    Kernel.to_string(version)
+  end
+
   def max(left, right) do
     case compare(left, right) do
       :lt -> right

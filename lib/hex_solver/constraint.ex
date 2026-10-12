@@ -11,4 +11,5 @@ defprotocol HexSolver.Constraint do
   def union(left, right)
   def compare(left, right)
   def to_requirement(constraint)
+  def to_string(constraint)
 end
