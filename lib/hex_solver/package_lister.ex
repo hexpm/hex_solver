@@ -133,7 +133,8 @@ defmodule HexSolver.PackageLister do
     lister = %{
       lister
       | already_prefetched: MapSet.union(lister.already_prefetched, prefetch),
-        already_returned: Map.put(lister.already_returned, package, already_returned)
+        already_returned:
+          Map.put(lister.already_returned, {package_repo, package}, already_returned)
     }
 
     {lister, incompatibilities}
