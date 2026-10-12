@@ -440,7 +440,7 @@ defmodule HexSolver.Constraints.Range do
 
   defimpl Inspect do
     def inspect(range, _opts) do
-      "#Range<#{range}>"
+      "#Range<#{HexSolver.Constraints.Range.to_string(range)}>"
     end
   end
 end

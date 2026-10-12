@@ -1,7 +1,7 @@
 defmodule HexSolver.Assignment do
   @moduledoc false
 
-  alias HexSolver.{Assignment, Term}
+  alias HexSolver.{Assignment, Incompatibility, Term}
 
   defstruct term: nil,
             decision_level: nil,
@@ -17,7 +17,7 @@ defmodule HexSolver.Assignment do
   end
 
   def to_string(%Assignment{term: term}) do
-    Kernel.to_string(term)
+    Term.to_string(term)
   end
 
   defimpl String.Chars do
@@ -34,10 +34,10 @@ defmodule HexSolver.Assignment do
           },
           _opts
         ) do
-      "#Assignment<term: #{term}#{maybe(", cause: ", cause)}, level: #{decision_level}, index: #{index}>"
+      "#Assignment<term: #{Term.to_string(term)}#{maybe(", cause: ", cause)}, level: #{decision_level}, index: #{index}>"
     end
 
     defp maybe(_prefix, nil), do: ""
-    defp maybe(prefix, value), do: "#{prefix}#{value}"
+    defp maybe(prefix, value), do: "#{prefix}#{Incompatibility.to_string(value)}"
   end
 end
