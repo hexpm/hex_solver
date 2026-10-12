@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## v0.3.1 (2026-10-13)
+
+### Bug fixes
+
+  * Fix `Protocol.UndefinedError` when formatting a failure or logging debug
+    output in a project whose consolidated `String.Chars` protocol doesn't
+    include the solver's implementations, such as when the solver is vendored
+    into a Mix archive.
+  * Don't add a package's dependency incompatibilities again when the solver
+    tries another version of the package. Since v0.2.0 they were added again
+    each time, which repeated work in resolutions that backtrack.
+
 ## v0.3.0 (2026-08-27)
 
 ### Enhancements
