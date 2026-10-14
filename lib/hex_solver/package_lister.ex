@@ -12,7 +12,8 @@ defmodule HexSolver.PackageLister do
             already_prefetched: MapSet.new([{nil, "$lock"}]),
             already_returned: %{},
             versions: %{},
-            candidates: %{}
+            candidates: %{},
+            dependencies: %{}
 
   def new(registry, root_dependencies, locked, overrides) do
     %PackageLister{
@@ -77,16 +78,8 @@ defmodule HexSolver.PackageLister do
 
   def dependencies_as_incompatibilities(%PackageLister{} = lister, package_repo, package, version) do
     {lister, {:ok, versions}} = versions(lister, package_repo, package)
+    {lister, {:ok, dependencies}} = dependencies(lister, package_repo, package, version)
     already_returned = Map.get(lister.already_returned, {package_repo, package}, %{})
-
-    # Dependencies of package keyed on package version
-    versions_dependencies =
-      Enum.map(versions, fn version ->
-        {:ok, dependencies} = dependencies(lister, package_repo, package, version)
-        {version, dependencies}
-      end)
-
-    {_version, dependencies} = List.keyfind(versions_dependencies, version, 0)
 
     # Dependencies of package version filtered of overrides and already returned dependencies
     dependencies =
@@ -102,30 +95,31 @@ defmodule HexSolver.PackageLister do
         end
       end)
 
-    incompatibilities =
-      Enum.map(dependencies, fn {dependency,
-                                 %{
-                                   repo: dependency_repo,
-                                   constraint: constraint,
-                                   optional: optional
-                                 }} ->
-        version_constraints =
-          Enum.map(versions_dependencies, fn {version, dependencies} ->
-            case Map.fetch(dependencies, dependency) do
-              {:ok, %{constraint: constraint, optional: optional}} ->
-                {version, {constraint, optional}}
+    index = Enum.find_index(versions, &(&1 == version))
+    versions = List.to_tuple(versions)
 
-              :error ->
-                {version, nil}
-            end
-          end)
-
+    {incompatibilities, lister} =
+      Enum.map_reduce(dependencies, lister, fn {dependency,
+                                                %{
+                                                  repo: dependency_repo,
+                                                  constraint: constraint,
+                                                  optional: optional
+                                                }},
+                                               lister ->
         # Find range of versions around the current version for which the
         # constraint is the same to create an incompatibility based on a
         # larger set of versions for the parent package.
         # This optimization let us skip many versions during conflict resolution.
-        lower = lower_bound(Enum.reverse(version_constraints), version, {constraint, optional})
-        upper = upper_bound(version_constraints, version, {constraint, optional})
+        run = %{
+          repo: package_repo,
+          package: package,
+          versions: versions,
+          dependency: dependency,
+          constraint: {constraint, optional}
+        }
+
+        {lister, lower} = lower_bound(lister, run, index - 1, version)
+        {lister, upper} = upper_bound(lister, run, index + 1)
 
         range = %Range{min: lower, max: upper, include_min: !!lower}
         package_range = %PackageRange{repo: package_repo, name: package, constraint: range}
@@ -143,7 +137,7 @@ defmodule HexSolver.PackageLister do
           optional: optional
         }
 
-        Incompatibility.new([package_term, dependency_term], :dependency)
+        {Incompatibility.new([package_term, dependency_term], :dependency), lister}
       end)
 
     prefetch =
@@ -180,54 +174,48 @@ defmodule HexSolver.PackageLister do
     {lister, incompatibilities}
   end
 
-  defp lower_bound(versions_dependencies, version, constraint) do
-    [{version, _} | versions_dependencies] = skip_to_version(versions_dependencies, version)
-
-    skip_to_last_constraint(versions_dependencies, constraint, version)
+  # The lowest version in the run of versions below the index that depend on
+  # the dependency with the same constraint, or nil if the run reaches the
+  # first version
+  defp lower_bound(lister, _run, -1, _last) do
+    {lister, nil}
   end
 
-  defp upper_bound(versions_dependencies, version, constraint) do
-    versions_dependencies = skip_to_version(versions_dependencies, version)
-    skip_to_after_constraint(versions_dependencies, constraint)
+  defp lower_bound(lister, run, index, last) do
+    case same_constraint?(lister, run, index) do
+      {lister, true} -> lower_bound(lister, run, index - 1, elem(run.versions, index))
+      {lister, false} -> {lister, last}
+    end
   end
 
-  defp skip_to_version([{version, _constraint} | _] = versions_dependencies, version) do
-    versions_dependencies
+  # The first version after the run of versions from the index that depend on
+  # the dependency with the same constraint, or nil if the run reaches the last
+  # version
+  defp upper_bound(lister, run, index) when index == tuple_size(run.versions) do
+    {lister, nil}
   end
 
-  defp skip_to_version([_ | versions_dependencies], version) do
-    skip_to_version(versions_dependencies, version)
+  defp upper_bound(lister, run, index) do
+    case same_constraint?(lister, run, index) do
+      {lister, true} -> upper_bound(lister, run, index + 1)
+      {lister, false} -> {lister, elem(run.versions, index)}
+    end
   end
 
-  defp skip_to_last_constraint(
-         [{version, constraint} | versions_dependencies],
-         {_constraint, _optional} = constraint,
-         _last
-       ) do
-    skip_to_last_constraint(versions_dependencies, constraint, version)
-  end
+  # Loads the dependencies of the version, so only the versions in a run and
+  # the one that ends it are loaded
+  defp same_constraint?(lister, run, index) do
+    version = elem(run.versions, index)
+    {lister, {:ok, dependencies}} = dependencies(lister, run.repo, run.package, version)
+    dependency = run.dependency
 
-  defp skip_to_last_constraint([], _constraint, _last) do
-    nil
-  end
+    case dependencies do
+      %{^dependency => %{constraint: constraint, optional: optional}} ->
+        {lister, {constraint, optional} == run.constraint}
 
-  defp skip_to_last_constraint(_versions_dependencies, _constraint, last) do
-    last
-  end
-
-  defp skip_to_after_constraint(
-         [{_, constraint}, {version, constraint} | versions_dependencies],
-         {_constraint, _optional} = constraint
-       ) do
-    skip_to_after_constraint([{version, constraint} | versions_dependencies], constraint)
-  end
-
-  defp skip_to_after_constraint([_, {version, _} | _versions_dependencies], _) do
-    version
-  end
-
-  defp skip_to_after_constraint(_, _constraint) do
-    nil
+      %{} ->
+        {lister, false}
+    end
   end
 
   @version_1 Elixir.Version.parse!("1.0.0")
@@ -260,7 +248,21 @@ defmodule HexSolver.PackageLister do
     end
   end
 
-  defp dependencies(%PackageLister{} = lister, _repo, "$root", @version_1) do
+  # Dependencies are loaded as the solver needs them and kept for the solve
+  defp dependencies(%PackageLister{} = lister, repo, package, version) do
+    key = {repo, package, version}
+
+    case lister.dependencies do
+      %{^key => result} ->
+        {lister, result}
+
+      %{} ->
+        result = uncached_dependencies(lister, repo, package, version)
+        {%{lister | dependencies: Map.put(lister.dependencies, key, result)}, result}
+    end
+  end
+
+  defp uncached_dependencies(%PackageLister{} = lister, _repo, "$root", @version_1) do
     lock_dependency =
       if lister.locked == [] do
         []
@@ -276,7 +278,7 @@ defmodule HexSolver.PackageLister do
     {:ok, dependency_map(lock_dependency ++ root_dependencies)}
   end
 
-  defp dependencies(%PackageLister{locked: locked}, _repo, "$lock", @version_1) do
+  defp uncached_dependencies(%PackageLister{locked: locked}, _repo, "$lock", @version_1) do
     {:ok,
      Map.new(locked, fn dependency ->
        {dependency.name,
@@ -290,7 +292,7 @@ defmodule HexSolver.PackageLister do
      end)}
   end
 
-  defp dependencies(%PackageLister{} = lister, repo, package, version) do
+  defp uncached_dependencies(%PackageLister{} = lister, repo, package, version) do
     root_dependency = find_root_dependency(lister, repo, package)
 
     if root_dependency do

@@ -78,6 +78,30 @@ defmodule HexSolver.PackageListerTest do
                PackageLister.dependencies_as_incompatibilities(lister, nil, "foo", v("1.0.0"))
     end
 
+    test "loads the dependencies of versions only as far as the constraint is the same" do
+      Registry.put("foo", "0.1.0", [{"bar", "~> 0.1"}])
+      Registry.put("foo", "1.0.0", [{"bar", "~> 1.0"}])
+      Registry.put("foo", "2.0.0", [{"bar", "~> 2.0"}])
+      Registry.put("foo", "3.0.0", [{"bar", "~> 2.0"}])
+      Registry.put("foo", "4.0.0", [{"bar", "~> 2.0"}])
+      Registry.put("foo", "5.0.0", [{"bar", "~> 3.0"}])
+      Registry.put("foo", "6.0.0", [{"bar", "~> 3.0"}])
+      Registry.prefetch([{nil, "foo"}])
+
+      lister = PackageLister.new(CountingRegistry, [], [], [])
+
+      assert {_lister, [incompatibility]} =
+               PackageLister.dependencies_as_incompatibilities(lister, nil, "foo", v("3.0.0"))
+
+      assert to_string(incompatibility) == ~s("foo >= 2.0.0 and < 5.0.0" depends on "bar ~> 2.0")
+
+      loaded =
+        for {{:dependencies, nil, "foo", version}, 1} <- CountingRegistry.calls(),
+            do: version
+
+      assert Enum.sort(loaded) == ["1.0.0", "2.0.0", "3.0.0", "4.0.0", "5.0.0"]
+    end
+
     test "returns dependencies again for a package with the same name in another repo" do
       Registry.put("foo", "1.0.0", [{"bar", "~> 1.0"}])
       Registry.put("repo", "foo", "1.0.0", [{"bar", "~> 1.0"}])
