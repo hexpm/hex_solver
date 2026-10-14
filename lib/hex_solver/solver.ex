@@ -110,17 +110,18 @@ defmodule HexSolver.Solver do
       :done
     else
       case PackageLister.pick_package(state.lister, unsatisfied) do
-        {:ok, package_range, nil} ->
+        {:ok, lister, package_range, nil} ->
           # If no version satisfies the constraint then add an incompatibility that indicates that
+          state = %{state | lister: lister}
           term = %Term{positive: true, package_range: package_range}
           incompatibility = Incompatibility.new([term], :no_versions)
           state = add_incompatibility(state, incompatibility)
           {:choice, package_range.name, state}
 
-        {:ok, %PackageRange{} = package_range, version} ->
+        {:ok, lister, %PackageRange{} = package_range, version} ->
           {lister, incompatibilities} =
             PackageLister.dependencies_as_incompatibilities(
-              state.lister,
+              lister,
               package_range.repo,
               package_range.name,
               version
@@ -154,7 +155,8 @@ defmodule HexSolver.Solver do
           state = %{state | solution: solution}
           {:choice, package_range.name, state}
 
-        {:error, %PackageRange{} = package_range} ->
+        {:error, lister, %PackageRange{} = package_range} ->
+          state = %{state | lister: lister}
           package_range = %PackageRange{package_range | constraint: Util.any()}
           term = %Term{positive: true, package_range: package_range}
           incompatibility = Incompatibility.new([term], :package_not_found)

@@ -10,7 +10,8 @@ defmodule HexSolver.PackageLister do
             locked: [],
             overrides: [],
             already_prefetched: MapSet.new([{nil, "$lock"}]),
-            already_returned: %{}
+            already_returned: %{},
+            versions: %{}
 
   def new(registry, root_dependencies, locked, overrides) do
     %PackageLister{
@@ -25,29 +26,33 @@ defmodule HexSolver.PackageLister do
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
   def pick_package(lister, package_ranges) do
-    {package_range, versions} =
-      package_ranges
-      |> Enum.sort_by(& &1.name)
-      |> Enum.map(fn package_range ->
-        case versions(lister, package_range.repo, package_range.name) do
-          {:ok, versions} ->
-            allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
-            {package_range, allowed}
+    pick_package(lister, Enum.sort_by(package_ranges, & &1.name), nil)
+  end
 
-          :error ->
-            throw({__MODULE__, :minimal_versions, package_range})
-        end
-      end)
-      |> Enum.min_by(fn {_package_range, versions} -> length(versions) end)
+  defp pick_package(lister, [package_range | package_ranges], best) do
+    case versions(lister, package_range.repo, package_range.name) do
+      {lister, {:ok, versions}} ->
+        allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
+        count = length(allowed)
 
-    {:ok, package_range, List.first(Enum.sort(versions, &Version.prioritize/2))}
-  catch
-    :throw, {__MODULE__, :minimal_versions, package_range} ->
-      {:error, package_range}
+        best =
+          if best == nil or count < elem(best, 1),
+            do: {package_range, count, allowed},
+            else: best
+
+        pick_package(lister, package_ranges, best)
+
+      {lister, :error} ->
+        {:error, lister, package_range}
+    end
+  end
+
+  defp pick_package(lister, [], {package_range, _count, allowed}) do
+    {:ok, lister, package_range, List.first(Enum.sort(allowed, &Version.prioritize/2))}
   end
 
   def dependencies_as_incompatibilities(%PackageLister{} = lister, package_repo, package, version) do
-    {:ok, versions} = versions(lister, package_repo, package)
+    {lister, {:ok, versions}} = versions(lister, package_repo, package)
     already_returned = Map.get(lister.already_returned, {package_repo, package}, %{})
 
     # Dependencies of package keyed on package version
@@ -203,10 +208,25 @@ defmodule HexSolver.PackageLister do
 
   @version_1 Elixir.Version.parse!("1.0.0")
 
-  defp versions(_lister, _repo, "$root"), do: {:ok, [@version_1]}
-  defp versions(_lister, _repo, "$lock"), do: {:ok, [@version_1]}
-
+  # Fetch each package's versions once per solve, so the solver works with the
+  # same versions throughout even if the registry filters them by time
   defp versions(%PackageLister{} = lister, repo, package) do
+    key = {repo, package}
+
+    case lister.versions do
+      %{^key => result} ->
+        {lister, result}
+
+      %{} ->
+        result = uncached_versions(lister, repo, package)
+        {%{lister | versions: Map.put(lister.versions, key, result)}, result}
+    end
+  end
+
+  defp uncached_versions(_lister, _repo, "$root"), do: {:ok, [@version_1]}
+  defp uncached_versions(_lister, _repo, "$lock"), do: {:ok, [@version_1]}
+
+  defp uncached_versions(%PackageLister{} = lister, repo, package) do
     root_dependency = find_root_dependency(lister, repo, package)
 
     if root_dependency do
