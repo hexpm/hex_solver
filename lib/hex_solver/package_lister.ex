@@ -11,7 +11,8 @@ defmodule HexSolver.PackageLister do
             overrides: [],
             already_prefetched: MapSet.new([{nil, "$lock"}]),
             already_returned: %{},
-            versions: %{}
+            versions: %{},
+            candidates: %{}
 
   def new(registry, root_dependencies, locked, overrides) do
     %PackageLister{
@@ -30,14 +31,11 @@ defmodule HexSolver.PackageLister do
   end
 
   defp pick_package(lister, [package_range | package_ranges], best) do
-    case versions(lister, package_range.repo, package_range.name) do
-      {lister, {:ok, versions}} ->
-        allowed = Enum.filter(versions, &Constraint.allows?(package_range.constraint, &1))
-        count = length(allowed)
-
+    case candidates(lister, package_range) do
+      {lister, {:ok, count, version}} ->
         best =
           if best == nil or count < elem(best, 1),
-            do: {package_range, count, allowed},
+            do: {package_range, count, version},
             else: best
 
         pick_package(lister, package_ranges, best)
@@ -47,8 +45,34 @@ defmodule HexSolver.PackageLister do
     end
   end
 
-  defp pick_package(lister, [], {package_range, _count, allowed}) do
-    {:ok, lister, package_range, List.first(Enum.sort(allowed, &Version.prioritize/2))}
+  defp pick_package(lister, [], {package_range, _count, version}) do
+    {:ok, lister, package_range, version}
+  end
+
+  # The number of versions a package range allows and the preferred one. The
+  # same package ranges stay unsatisfied over many decisions, so cache them.
+  defp candidates(lister, %PackageRange{repo: repo, name: name, constraint: constraint}) do
+    key = {repo, name, constraint}
+
+    case lister.candidates do
+      %{^key => candidates} ->
+        {lister, candidates}
+
+      %{} ->
+        {lister, versions} = versions(lister, repo, name)
+
+        candidates =
+          case versions do
+            {:ok, versions} ->
+              allowed = Enum.filter(versions, &Constraint.allows?(constraint, &1))
+              {:ok, length(allowed), List.first(Enum.sort(allowed, &Version.prioritize/2))}
+
+            :error ->
+              :error
+          end
+
+        {%{lister | candidates: Map.put(lister.candidates, key, candidates)}, candidates}
+    end
   end
 
   def dependencies_as_incompatibilities(%PackageLister{} = lister, package_repo, package, version) do
