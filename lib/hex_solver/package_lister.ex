@@ -6,10 +6,21 @@ defmodule HexSolver.PackageLister do
 
   defstruct registry: nil,
             root_dependencies: [],
+            root_parents: %{},
             locked: [],
             overrides: [],
             already_prefetched: MapSet.new([{nil, "$lock"}]),
             already_returned: %{}
+
+  def new(registry, root_dependencies, locked, overrides) do
+    %PackageLister{
+      registry: registry,
+      root_dependencies: root_dependencies,
+      root_parents: root_parents(root_dependencies),
+      locked: locked,
+      overrides: overrides
+    }
+  end
 
   # Prefer packages with few remaining versions so that if there is conflict
   # later it will be forced quickly
@@ -261,7 +272,16 @@ defmodule HexSolver.PackageLister do
     end)
   end
 
-  defp find_root_dependency(%PackageLister{root_dependencies: dependencies}, repo, package) do
-    Enum.find(dependencies, &(&1.repo == repo and &1.name == package and &1.dependencies != []))
+  # Root dependencies with sub dependencies stand in for registry packages.
+  # Index them by package, keeping the first declaration of each.
+  defp root_parents(dependencies) do
+    Enum.reduce(dependencies, %{}, fn
+      %{dependencies: []}, parents -> parents
+      dependency, parents -> Map.put_new(parents, {dependency.repo, dependency.name}, dependency)
+    end)
+  end
+
+  defp find_root_dependency(%PackageLister{root_parents: parents}, repo, package) do
+    Map.get(parents, {repo, package})
   end
 end

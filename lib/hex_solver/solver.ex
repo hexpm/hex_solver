@@ -361,12 +361,7 @@ defmodule HexSolver.Solver do
         %{repo: repo, name: package, constraint: version, label: label}
       end)
 
-    lister = %PackageLister{
-      registry: registry,
-      root_dependencies: root_dependencies,
-      locked: locked,
-      overrides: overrides
-    }
+    lister = PackageLister.new(registry, root_dependencies, locked, overrides)
 
     %{
       solution: %PartialSolution{},
