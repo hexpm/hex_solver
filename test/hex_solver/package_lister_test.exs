@@ -57,6 +57,64 @@ defmodule HexSolver.PackageListerTest do
       assert version == v("1.0.0")
       assert CountingRegistry.calls() == %{{:versions, nil, "foo"} => 1}
     end
+
+    test "picks the package with the fewest allowed versions, the first by name on a tie" do
+      for package <- ["foo", "bar", "baz"], version <- ["1.0.0", "1.1.0"] do
+        Registry.put(package, version, [])
+      end
+
+      Registry.put("baz", "1.2.0", [])
+      Registry.prefetch([{nil, "foo"}, {nil, "bar"}, {nil, "baz"}])
+
+      lister = PackageLister.new(Registry, [], [], [])
+      foo = package_range("foo", "~> 1.0")
+      bar = package_range("bar", "~> 1.0")
+      baz = package_range("baz", "~> 1.0")
+
+      assert {:ok, lister, ^bar, version} = PackageLister.pick_package(lister, [foo, baz, bar])
+      assert version == v("1.1.0")
+
+      foo = package_range("foo", "1.0.0")
+
+      assert {:ok, _lister, ^foo, version} = PackageLister.pick_package(lister, [baz, bar, foo])
+      assert version == v("1.0.0")
+    end
+
+    test "reuses the candidates of a package range" do
+      Registry.put("foo", "1.0.0", [])
+      Registry.put("foo", "1.1.0", [])
+      Registry.put("repo", "foo", "2.0.0", [])
+      Registry.prefetch([{nil, "foo"}, {"repo", "foo"}])
+
+      lister = PackageLister.new(Registry, [], [], [])
+      foo = package_range("foo", "~> 1.0")
+
+      assert {:ok, lister, ^foo, version} = PackageLister.pick_package(lister, [foo])
+      assert version == v("1.1.0")
+      assert lister.candidates == %{{nil, "foo", foo.constraint} => {:ok, 2, v("1.1.0")}}
+
+      cached = %{lister | candidates: %{{nil, "foo", foo.constraint} => {:ok, 1, v("1.0.0")}}}
+      assert {:ok, _lister, ^foo, version} = PackageLister.pick_package(cached, [foo])
+      assert version == v("1.0.0")
+
+      repo_foo = package_range("repo", "foo", ">= 0.0.0")
+      assert {:ok, _lister, ^repo_foo, version} = PackageLister.pick_package(lister, [repo_foo])
+      assert version == v("2.0.0")
+    end
+
+    test "returns the first package by name without versions after cached candidates" do
+      Registry.put("foo", "1.0.0", [])
+      Registry.prefetch([{nil, "foo"}, {nil, "bar"}, {nil, "baz"}])
+
+      lister = PackageLister.new(Registry, [], [], [])
+      foo = package_range("foo", "~> 1.0")
+      bar = package_range("bar", "~> 1.0")
+      baz = package_range("baz", "~> 1.0")
+
+      assert {:ok, lister, ^foo, _version} = PackageLister.pick_package(lister, [foo])
+      assert {:error, lister, ^bar} = PackageLister.pick_package(lister, [foo, baz, bar])
+      assert {:error, _lister, ^baz} = PackageLister.pick_package(lister, [foo, baz])
+    end
   end
 
   describe "dependencies_as_incompatibilities/4" do
@@ -116,5 +174,13 @@ defmodule HexSolver.PackageListerTest do
       assert {_lister, [_incompatibility]} =
                PackageLister.dependencies_as_incompatibilities(lister, "repo", "foo", v("1.0.0"))
     end
+  end
+
+  defp package_range(repo \\ nil, name, requirement) do
+    %PackageRange{
+      repo: repo,
+      name: name,
+      constraint: HexSolver.Requirement.to_constraint!(requirement)
+    }
   end
 end
