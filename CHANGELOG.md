@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v0.3.2 (2026-10-14)
+
+### Enhancements
+
+  * Speed up resolution, most of all in projects with many dependencies. The
+    solver now calls the registry's `versions/2` once per package in a
+    resolution, and only calls `dependencies/3` for the versions it considers
+    instead of every version of a package.
+
 ## v0.3.1 (2026-10-13)
 
 ### Bug fixes
