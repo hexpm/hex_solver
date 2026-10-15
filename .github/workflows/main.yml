@@ -8,7 +8,11 @@ permissions:
 jobs:
   test:
     name: Test
+    # A pull request from a branch in this repository tests the same commit
+    # as the branch's push, so only pull requests from forks run here.
+    if: ${{ github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository }}
     runs-on: ubuntu-24.04
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
