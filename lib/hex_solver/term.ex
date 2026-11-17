@@ -103,8 +103,10 @@ defmodule HexSolver.Term do
           end
 
         not left.positive and not right.positive ->
+          # An optional negative term only holds when the package is selected, so the
+          # intersection does too
           constraint = Constraint.union(constraint(left), constraint(right))
-          non_empty_term(left, constraint, optional, false)
+          non_empty_term(left, constraint, left.optional or right.optional, false)
       end
     else
       nil
