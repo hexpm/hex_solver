@@ -306,6 +306,41 @@ defmodule HexSolver.SolverTest do
 
       assert run([{"b", ">= 0.0.0"}], [{"c", "1.0.0"}]) == %{"b" => "0.9.0"}
     end
+
+    test "skip dependency version that requires locked package outside an optional requirement" do
+      Registry.put("c", "0.9.0", [{"a", ">= 0.0.0"}, {"b", "> 1.0.0 and < 2.0.0", optional: true}])
+
+      Registry.put("a", "0.9.0", [])
+      Registry.put("a", "1.1.0", [{"b", "~> 1.0"}])
+
+      assert run([{"c", ">= 0.0.0"}], [{"b", "1.0.0"}]) == %{"c" => "0.9.0", "a" => "0.9.0"}
+    end
+
+    test "skip root dependency version that requires locked package with disjoint optional" do
+      Registry.put("c", "1.0.0-rc.1", [])
+      Registry.put("c", "1.1.0", [{"a", ">= 0.0.0"}])
+      Registry.put("d", "2.0.0", [{"a", "1.0.0", optional: true}])
+
+      assert run([{"c", ">= 0.0.0"}, {"d", "1.1.0 or 2.0.0"}], [{"a", "0.9.0"}]) == %{
+               "c" => "1.0.0-rc.1",
+               "d" => "2.0.0"
+             }
+    end
+
+    test "conflict when optional requirement excludes locked version that a sub dependency requires" do
+      Registry.put("a", "1.0.0", [{"c", ">= 0.0.0"}])
+      Registry.put("b", "1.0.0-rc.1", [])
+      Registry.put("b", "1.1.0", [{"c", "1.1.0 or 2.0.0", optional: true}])
+      Registry.put("b", "1.2.0", [{"e", "1.1.0 or 2.0.0"}])
+      Registry.put("c", "3.0.0", [])
+      Registry.put("e", "2.0.0", [{"f", "~> 1.0"}])
+
+      assert {:conflict, _, _} =
+               run(
+                 [{"p", ">= 0.0.0", dependencies: [{"a", "1.0.0"}]}, {"b", "~> 1.0"}],
+                 [{"c", "3.0.0"}, {"f", "2.0.0"}]
+               )
+    end
   end
 
   describe "run/4 optional" do
@@ -466,6 +501,21 @@ defmodule HexSolver.SolverTest do
       Registry.put("d", "1.0.0", [{"c", "< 1.1.0"}])
 
       assert run([{"c", ">= 0.0.0"}]) == %{"c" => "0.9.0"}
+    end
+
+    test "skip sibling version that requires a package with disjoint optional dependencies" do
+      Registry.put("bar", "1.0.0", [{"fuse", "~> 1.0", optional: true}])
+      Registry.put("car", "1.0.0", [{"fuse", "~> 2.0", optional: true}])
+      Registry.put("qux", "0.9.0", [])
+      Registry.put("qux", "1.0.0", [{"fuse", ">= 0.0.0"}])
+      Registry.put("fuse", "1.0.0", [])
+      Registry.put("fuse", "2.0.0", [])
+
+      assert run([{"bar", "1.0.0"}, {"car", "1.0.0"}, {"qux", ">= 0.0.0"}]) == %{
+               "bar" => "1.0.0",
+               "car" => "1.0.0",
+               "qux" => "0.9.0"
+             }
     end
 
     test "select optional" do
