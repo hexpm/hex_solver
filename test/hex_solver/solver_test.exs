@@ -356,6 +356,25 @@ defmodule HexSolver.SolverTest do
       assert run([{"foo", "~> 1.0"}]) == %{"foo" => "1.0.0", "bar" => "1.0.0", "baz" => "1.0.0"}
     end
 
+    test "skip optional after backtracking a required dependency on it" do
+      Registry.put("foo", "1.0.0", [{"bar", "<= 1.0.0"}, {"opt", "~> 1.0", optional: true}])
+      Registry.put("bar", "0.9.0", [])
+      Registry.put("bar", "1.0.0", [{"opt", "~> 1.0.0-rc.2"}])
+      Registry.put("opt", "1.0.0-rc.2", [])
+
+      assert run([{"foo", "1.0.0"}]) == %{"foo" => "1.0.0", "bar" => "0.9.0"}
+    end
+
+    test "skip optional with remaining versions after backtracking a required dependency on it" do
+      Registry.put("foo", "1.0.0", [{"bar", "<= 1.0.0"}, {"opt", "~> 1.0", optional: true}])
+      Registry.put("bar", "0.9.0", [])
+      Registry.put("bar", "1.0.0", [{"opt", "~> 1.0.0-rc.2"}])
+      Registry.put("opt", "1.0.0-rc.2", [])
+      Registry.put("opt", "1.1.0", [])
+
+      assert run([{"foo", "1.0.0"}]) == %{"foo" => "1.0.0", "bar" => "0.9.0"}
+    end
+
     test "select optional" do
       Registry.put("foo", "1.0.0", [])
       Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])

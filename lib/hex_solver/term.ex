@@ -11,8 +11,15 @@ defmodule HexSolver.Term do
   def relation(left, right, opts \\ []) do
     if Keyword.get(opts, :optionals, true) do
       case do_relation(left, right) do
-        :disjoint -> if left.optional and not right.optional, do: :overlapping, else: :disjoint
-        other -> if left.optional and right.optional, do: :disjoint, else: other
+        # An optional term also allows the package to be absent, which a negative
+        # term allows and a positive term doesn't
+        :disjoint ->
+          if left.optional and not right.optional and not right.positive,
+            do: :overlapping,
+            else: :disjoint
+
+        other ->
+          if left.optional and right.optional, do: :disjoint, else: other
       end
     else
       do_relation(left, right)
@@ -65,8 +72,9 @@ defmodule HexSolver.Term do
           positive = if left.positive, do: left, else: right
           negative = if left.positive, do: right, else: left
 
+          # A negative term only excludes versions, so it can't make an optional term required
           constraint = Constraint.difference(constraint(positive), constraint(negative))
-          non_empty_term(left, constraint, optional, true)
+          non_empty_term(left, constraint, positive.optional, true)
 
         left.positive and right.positive ->
           constraint = Constraint.intersect(constraint(left), constraint(right))
