@@ -42,9 +42,19 @@ defmodule HexSolver.Requirement do
   end
 
   defp delex([], acc) do
-    acc
-    |> Enum.map(&normalize_constraint/1)
-    |> Util.union()
+    {constraints, disjoint} =
+      Enum.reduce(acc, {[], []}, fn
+        {:ok, constraint}, {constraints, disjoint} ->
+          {[normalize_constraint(constraint) | constraints], disjoint}
+
+        {:disjoint, left, right}, {constraints, disjoint} ->
+          {constraints, [{left, right} | disjoint]}
+      end)
+
+    case {Util.union(constraints), disjoint} do
+      {%Empty{}, [{left, right} | _]} -> throw({__MODULE__, :unsatisfiable, left, right})
+      {union, _disjoint} -> union
+    end
   end
 
   defp delex([op | rest], acc) when op in [:||, :or] do
@@ -65,16 +75,15 @@ defmodule HexSolver.Requirement do
   end
 
   defp intersect([constraint | constraints]) do
-    Enum.reduce(constraints, constraint, fn constraint, intersection ->
+    Enum.reduce_while(constraints, {:ok, constraint}, fn constraint, {:ok, intersection} ->
       case Constraint.intersect(intersection, constraint) do
         %Empty{} ->
-          throw(
-            {__MODULE__, :unsatisfiable, Constraint.to_requirement(intersection),
-             Constraint.to_requirement(constraint)}
-          )
+          {:halt,
+           {:disjoint, Constraint.to_requirement(intersection),
+            Constraint.to_requirement(constraint)}}
 
         intersection ->
-          intersection
+          {:cont, {:ok, intersection}}
       end
     end)
   end
