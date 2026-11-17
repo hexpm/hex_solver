@@ -245,6 +245,16 @@ defmodule HexSolver.SolverTest do
                  {"rabbit_common", "~> 3.7"}
                ])
     end
+
+    test "no matching dependency of locked package with optional dependency on it" do
+      Registry.put("c", "0.9.0", [{"a", "1.0.0", optional: true}])
+      Registry.put("f", "1.0.0", [])
+      Registry.put("f", "1.2.0", [{"a", "~> 1.0.0"}])
+      Registry.put("a", "2.0.0", [])
+      Registry.put("p", "1.0.0", [{"f", ">= 1.1.0"}])
+
+      assert {:conflict, _, _} = run([{"p", ">= 0.0.0"}, {"c", "~> 0.9"}], [{"f", "1.2.0"}])
+    end
   end
 
   describe "run/4 locked" do
@@ -287,6 +297,14 @@ defmodule HexSolver.SolverTest do
       Registry.put("foo", "2.0.0", [{"bar", "< 1.1.0"}])
 
       assert run([{"foo", ">= 0.0.0"}], [{"bar", "1.0.0"}]) == %{"foo" => "0.9.0"}
+    end
+
+    test "locked version that doesn't exist" do
+      Registry.put("b", "0.9.0", [])
+      Registry.put("b", "2.0.0", [{"c", "< 1.1.0"}])
+      Registry.put("c", "2.0.0", [])
+
+      assert run([{"b", ">= 0.0.0"}], [{"c", "1.0.0"}]) == %{"b" => "0.9.0"}
     end
   end
 
@@ -397,6 +415,57 @@ defmodule HexSolver.SolverTest do
       Registry.put("bar", "0.1.0", [])
 
       assert run([{"foo", ">= 0.0.0"}]) == %{"foo" => "1.1.0"}
+    end
+
+    test "skip sibling version that requires optional outside its requirement" do
+      Registry.put("foo", "1.1.0", [{"bar", "~> 1.0", optional: true}])
+      Registry.put("foo", "2.0.0", [{"bar", "~> 1.0"}])
+      Registry.put("bar", "0.1.0", [])
+      Registry.put("bar", "2.0.0", [])
+      Registry.put("qux", "0.9.0", [])
+      Registry.put("qux", "1.0.0", [{"bar", "~> 2.0"}])
+
+      assert run([{"foo", ">= 0.0.0"}, {"qux", ">= 0.0.0"}]) == %{
+               "foo" => "1.1.0",
+               "qux" => "0.9.0"
+             }
+    end
+
+    test "skip sibling version that requires optional with only a prerelease" do
+      Registry.put("a", "1.0.0-rc.1", [])
+      Registry.put("b", "2.0.0", [{"a", "~> 1.0", optional: true}])
+      Registry.put("c", "0.9.0", [])
+      Registry.put("c", "1.0.0", [{"a", "< 1.1.0"}])
+      Registry.put("c", "2.0.0", [{"a", "~> 1.0"}])
+
+      assert run([{"c", ">= 0.0.0"}, {"b", ">= 1.1.0"}]) == %{"b" => "2.0.0", "c" => "0.9.0"}
+    end
+
+    test "skip sibling version that requires optional with no matching versions" do
+      Registry.put("a", "1.1.0", [])
+      Registry.put("b", "1.0.0", [{"a", "1.0.0", optional: true}])
+      Registry.put("d", "1.0.0", [])
+      Registry.put("d", "1.1.0", [{"a", "~> 1.0"}])
+
+      assert run([{"b", "~> 1.0.0"}, {"d", "~> 1.0"}]) == %{"b" => "1.0.0", "d" => "1.0.0"}
+    end
+
+    test "skip dependency version that requires optional with no matching versions" do
+      Registry.put("a", "1.0.0-rc.1", [])
+      Registry.put("a", "1.0.0", [{"d", "~> 1.0.0"}])
+      Registry.put("b", "1.0.0", [{"a", "< 1.1.0"}, {"d", "1.0.0", optional: true}])
+      Registry.put("d", "2.0.0", [])
+
+      assert run([{"b", "1.0.0"}]) == %{"a" => "1.0.0-rc.1", "b" => "1.0.0"}
+    end
+
+    test "don't select dependency of a backtracked version that required the optional" do
+      Registry.put("c", "0.9.0", [{"b", "> 1.0.0 and < 2.0.0", optional: true}])
+      Registry.put("c", "2.0.0", [{"b", "~> 1.0"}])
+      Registry.put("b", "1.0.0", [{"d", "~> 1.0"}])
+      Registry.put("d", "1.0.0", [{"c", "< 1.1.0"}])
+
+      assert run([{"c", ">= 0.0.0"}]) == %{"c" => "0.9.0"}
     end
 
     test "select optional" do
