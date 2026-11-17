@@ -115,7 +115,7 @@ defmodule HexSolver.PackageLister do
           package: package,
           versions: versions,
           dependency: dependency,
-          constraint: {constraint, optional}
+          constraint: {dependency_repo, constraint, optional}
         }
 
         {lister, lower} = lower_bound(lister, run, index - 1, version)
@@ -210,8 +210,8 @@ defmodule HexSolver.PackageLister do
     dependency = run.dependency
 
     case dependencies do
-      %{^dependency => %{constraint: constraint, optional: optional}} ->
-        {lister, {constraint, optional} == run.constraint}
+      %{^dependency => %{repo: repo, constraint: constraint, optional: optional}} ->
+        {lister, {repo, constraint, optional} == run.constraint}
 
       %{} ->
         {lister, false}
