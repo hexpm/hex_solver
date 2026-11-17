@@ -153,19 +153,24 @@ defmodule HexSolver.RequirementTest do
                     max_length: 3
                   ) do
         requirement = Enum.map_join(groups, " or ", &Enum.join(&1, " and "))
-        assert {:ok, parsed} = Version.parse_requirement(requirement)
+        assert {:ok, _parsed} = Version.parse_requirement(requirement)
+
+        # Elixir 1.12 gives "and" and "or" the same precedence, so match each "and"
+        # group on its own
+        groups = Enum.map(groups, &Version.parse_requirement!(Enum.join(&1, " and ")))
+        match? = fn version -> Enum.any?(groups, &Version.match?(version, &1)) end
 
         case Requirement.to_constraint(requirement) do
           {:ok, constraint} ->
             mismatches =
               Enum.reject(@versions, fn version ->
-                Constraint.allows?(constraint, version) == Version.match?(version, parsed)
+                Constraint.allows?(constraint, version) == match?.(version)
               end)
 
             assert mismatches == [], "#{requirement} differs from core on #{inspect(mismatches)}"
 
           :error ->
-            refute Enum.any?(@versions, &Version.match?(&1, parsed)),
+            refute Enum.any?(@versions, match?),
                    "#{requirement} rejected but matches versions"
         end
       end
