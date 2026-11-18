@@ -18,6 +18,11 @@ defmodule HexSolver.Term do
             do: :overlapping,
             else: :disjoint
 
+        # A negative term allows the package to be absent, so it can't satisfy
+        # an optional term
+        :subset when right.optional and not left.positive ->
+          :disjoint
+
         other ->
           if left.optional and right.optional, do: :disjoint, else: other
       end

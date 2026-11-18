@@ -281,6 +281,13 @@ defmodule HexSolver.SolverTest do
 
       assert run([{"foo", "~> 1.0"}], [{"foo", "1.1.0"}]) == %{"foo" => "1.1.0"}
     end
+
+    test "locked package that doesn't exist" do
+      Registry.put("foo", "0.9.0", [])
+      Registry.put("foo", "2.0.0", [{"bar", "< 1.1.0"}])
+
+      assert run([{"foo", ">= 0.0.0"}], [{"bar", "1.0.0"}]) == %{"foo" => "0.9.0"}
+    end
   end
 
   describe "run/4 optional" do
@@ -373,6 +380,23 @@ defmodule HexSolver.SolverTest do
       Registry.put("opt", "1.1.0", [])
 
       assert run([{"foo", "1.0.0"}]) == %{"foo" => "1.0.0", "bar" => "0.9.0"}
+    end
+
+    test "skip optional with no matching versions when a sibling requires it" do
+      Registry.put("c", "1.1.0", [{"a", "~> 1.0"}, {"d", "~> 1.0", optional: true}])
+      Registry.put("a", "1.0.0", [])
+      Registry.put("a", "1.1.0", [{"d", "~> 1.0"}])
+      Registry.put("d", "0.1.0", [])
+
+      assert run([{"c", ">= 0.0.0"}]) == %{"c" => "1.1.0", "a" => "1.0.0"}
+    end
+
+    test "skip optional with no matching versions when a newer version requires it" do
+      Registry.put("foo", "1.1.0", [{"bar", "~> 1.0", optional: true}])
+      Registry.put("foo", "2.0.0", [{"bar", "~> 1.0"}])
+      Registry.put("bar", "0.1.0", [])
+
+      assert run([{"foo", ">= 0.0.0"}]) == %{"foo" => "1.1.0"}
     end
 
     test "select optional" do
