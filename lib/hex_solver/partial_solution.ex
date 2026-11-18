@@ -135,8 +135,16 @@ defmodule HexSolver.PartialSolution do
     case Map.fetch(solution.positive, name) do
       {:ok, old_assignment} ->
         assignment = Assignment.intersect(old_assignment, assignment)
-        positive = Map.put(solution.positive, name, assignment)
-        %{solution | positive: positive}
+
+        # An optional term becomes negative when the package can only be absent
+        if assignment.term.positive do
+          positive = Map.put(solution.positive, name, assignment)
+          %{solution | positive: positive}
+        else
+          positive = Map.delete(solution.positive, name)
+          negative = Map.put(solution.negative, name, assignment)
+          %{solution | positive: positive, negative: negative}
+        end
 
       :error ->
         assignment =
