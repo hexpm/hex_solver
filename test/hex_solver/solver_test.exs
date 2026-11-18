@@ -518,6 +518,22 @@ defmodule HexSolver.SolverTest do
              }
     end
 
+    test "don't select optional after backtracking the version that required it" do
+      Registry.put("a", "0.9.0", [])
+      Registry.put("a", "1.2.0", [])
+      Registry.put("b", "2.0.0", [{"f", ">= 0.0.0"}])
+      Registry.put("e", "1.1.0", [])
+      Registry.put("e", "2.0.0", [{"a", "< 1.1.0"}])
+      Registry.put("f", "1.0.0-rc.1", [{"a", "~> 1.0", optional: true}])
+      Registry.put("f", "3.0.0", [{"a", "~> 1.0.0-rc.1"}])
+
+      assert run([{"b", "1.1.0 or 2.0.0"}, {"e", ">= 1.1.0"}]) == %{
+               "b" => "2.0.0",
+               "e" => "1.1.0",
+               "f" => "1.0.0-rc.1"
+             }
+    end
+
     test "select optional" do
       Registry.put("foo", "1.0.0", [])
       Registry.put("bar", "1.0.0", [{"foo", "1.0.0"}])
