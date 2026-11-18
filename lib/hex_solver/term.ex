@@ -8,6 +8,8 @@ defmodule HexSolver.Term do
             package_range: nil,
             optional: false
 
+  @any_repo :any
+
   def relation(left, right, opts \\ []) do
     optionals = Keyword.get(opts, :optionals, true)
 
@@ -15,7 +17,7 @@ defmodule HexSolver.Term do
       # A negative term allows the package to be absent, so it can't satisfy an
       # optional term. It's disjoint when absent is all the negative term allows.
       :subset when right.optional and not left.positive ->
-        if Constraint.any?(constraint(left)), do: :disjoint, else: :overlapping
+        if absent?(left), do: :disjoint, else: :overlapping
 
       # An optional term allows the package to be absent, so it can't satisfy a
       # required positive term
@@ -109,12 +111,25 @@ defmodule HexSolver.Term do
           non_empty_term(left, constraint, left.optional or right.optional, false)
       end
     else
-      nil
+      # A package selected from one repo isn't selected from another, so a positive
+      # term implies a negative term for another repo
+      if left.positive != right.positive do
+        if left.positive, do: left, else: right
+      end
     end
   end
 
   def difference(%Term{} = left, %Term{} = right) do
-    intersect(left, inverse(right))
+    # The inverse of the difference is added to an incompatibility, which can't hold
+    # a term for every repo, so the package being absent becomes the weaker negative
+    # term for the left term's repo
+    case intersect(left, inverse(right)) do
+      %Term{package_range: %PackageRange{repo: @any_repo} = package_range} = term ->
+        %{term | package_range: %{package_range | repo: left.package_range.repo}}
+
+      term ->
+        term
+    end
   end
 
   def satisfies?(%Term{} = left, %Term{} = right, opts \\ []) do
@@ -133,6 +148,14 @@ defmodule HexSolver.Term do
     true
   end
 
+  def compatible_package?(%Term{package_range: %PackageRange{repo: @any_repo} = left}, right) do
+    left.name == right.package_range.name
+  end
+
+  def compatible_package?(left, %Term{package_range: %PackageRange{repo: @any_repo} = right}) do
+    left.package_range.name == right.name
+  end
+
   def compatible_package?(%Term{package_range: left}, %Term{package_range: right}) do
     {left.repo, left.name} == {right.repo, right.name}
   end
@@ -141,8 +164,14 @@ defmodule HexSolver.Term do
     constraint
   end
 
-  defp absent_term(term) do
-    %Term{package_range: %{term.package_range | constraint: Util.any()}, positive: false}
+  # The package isn't selected from any repo
+  def absent_term(term) do
+    package_range = %{term.package_range | repo: @any_repo, constraint: Util.any()}
+    %Term{package_range: package_range, positive: false}
+  end
+
+  def absent?(%Term{package_range: %PackageRange{repo: repo}}) do
+    repo == @any_repo
   end
 
   defp non_empty_term(_term, %Empty{}, _optional, _positive) do

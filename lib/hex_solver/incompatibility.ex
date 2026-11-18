@@ -33,11 +33,29 @@ defmodule HexSolver.Incompatibility do
 
       _ ->
         terms =
-          Enum.reduce(terms, %{}, fn term, map ->
-            Map.update(map, term.package_range.name, term, &Term.intersect(&1, term))
+          terms
+          |> Enum.reduce(%{}, fn term, map ->
+            key = {term.package_range.name, term.package_range.repo}
+            Map.update(map, key, term, &Term.intersect(&1, term))
           end)
+          |> Map.values()
+          |> Enum.group_by(& &1.package_range.name)
+          |> Enum.flat_map(fn {_name, terms} -> merge_repos(terms) end)
 
-        %Incompatibility{terms: Map.values(terms), cause: cause}
+        %Incompatibility{terms: terms, cause: cause}
+    end
+  end
+
+  # Negative terms for the same package from different repos can't be intersected
+  # into a single term. A positive term for one repo implies a negative term for
+  # another, so the negative terms are intersected with a positive term if there is one.
+  defp merge_repos(terms) do
+    case Enum.split_with(terms, & &1.positive) do
+      {[], negative} ->
+        negative
+
+      {[positive | positives], negative} ->
+        [Enum.reduce(negative, positive, &Term.intersect(&2, &1)) | positives]
     end
   end
 
