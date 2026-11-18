@@ -82,6 +82,34 @@ defmodule HexSolver.FailureTest do
            """
   end
 
+  test "multiple numbered lines" do
+    Registry.put("a", "1.0.0-rc.1", [{"c", "< 1.1.0"}])
+    Registry.put("a", "1.0.0", [{"c", "~> 1.0"}])
+    Registry.put("c", "0.9.0", [{"d", "> 1.0.0 and < 2.0.0"}])
+
+    Registry.put("c", "1.1.0", [
+      {"a", "1.1.0 or 2.0.0"},
+      {"b", "~> 1.0.0"},
+      {"d", "1.1.0 or 2.0.0"}
+    ])
+
+    Registry.put("c", "2.0.0", [{"b", ">= 1.1.0"}, {"d", ">= 0.0.0"}])
+    Registry.put("d", "0.9.0", [{"a", "1.1.0 or 2.0.0"}, {"c", "~> 1.0.0"}])
+    Registry.put("d", "1.1.0", [{"c", "1.0.0"}])
+
+    assert run([{"a", "~> 1.0.0-rc.1"}]) == """
+           (1) Because "a < 1.0.0" depends on "c < 1.1.0" which depends on "d > 1.0.0 and < 2.0.0", "a < 1.0.0" requires "d > 1.0.0 and < 2.0.0".
+
+               Because no versions of "d" match "> 1.0.0 and < 1.1.0" and "d >= 1.1.0" depends on "c 1.0.0", "d > 1.0.0" requires "c 1.0.0".
+               And because "a < 1.0.0" requires "d > 1.0.0 and < 2.0.0" (1), "a < 1.0.0" requires "c 1.0.0".
+           (2) So, because "a >= 1.0.0" depends on "c ~> 1.0", "a" requires "c ~> 1.0".
+
+               Because no versions of "c" match ">= 1.0.0 and < 1.1.0" and "c >= 1.1.0 and < 2.0.0" depends on "a 1.1.0 or 2.0.0", "c >= 1.0.0 and < 2.0.0" requires "a 1.1.0 or 2.0.0".
+               And because "a" requires "c ~> 1.0" (2), "a < 1.1.0 or > 1.1.0 and < 2.0.0 or > 2.0.0" is forbidden.
+               So, because "your app" depends on "a ~> 1.0.0-rc.1", version solving failed.\
+           """
+  end
+
   test "locked" do
     Registry.put("foo", "1.0.0", [])
     Registry.put("foo", "2.0.0", [])
