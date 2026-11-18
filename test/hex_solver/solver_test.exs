@@ -526,5 +526,19 @@ defmodule HexSolver.SolverTest do
       assert [term] = incompatibility.terms
       assert term.package_range.name == "foo"
     end
+
+    test "versions depending on the same constraint from different repos" do
+      Registry.put("foo", "1.0.0", [{"baz", "1.0.0", repo: "b"}])
+      Registry.put("foo", "1.1.0", [{"baz", "1.0.0", repo: "a"}])
+      Registry.put("bar", "1.0.0", [{"baz", "1.0.0", repo: "b"}])
+      Registry.put("a", "baz", "1.0.0", [])
+      Registry.put("b", "baz", "1.0.0", [])
+
+      assert run([{"foo", "~> 1.0"}, {"bar", "1.0.0"}]) == %{
+               "foo" => "1.0.0",
+               "bar" => "1.0.0",
+               {"b", "baz"} => "1.0.0"
+             }
+    end
   end
 end
