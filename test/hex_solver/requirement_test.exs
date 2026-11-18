@@ -112,22 +112,65 @@ defmodule HexSolver.RequirementTest do
       end
     end
 
+    test "drop unsatisfiable or branches" do
+      assert Requirement.to_constraint!("~> 1.0 or ~> 2.0 and ~> 3.0") ==
+               Requirement.to_constraint!("~> 1.0")
+
+      assert Requirement.to_constraint("~> 1.0 or ~> 2.0 and ~> 3.0") ==
+               Requirement.to_constraint("~> 1.0")
+
+      assert Requirement.to_constraint!("~> 2.0 and ~> 3.0 or ~> 1.0") ==
+               Requirement.to_constraint!("~> 1.0")
+
+      assert Requirement.to_constraint!("~> 1.0 or ~> 2.0 and ~> 3.0 or ~> 4.0") ==
+               Requirement.to_constraint!("~> 1.0 or ~> 4.0")
+
+      assert Requirement.to_constraint!("~> 1.0 and ~> 2.0 or >= 1.0.0 and < 2.0.0 and > 1.5.0") ==
+               %Range{min: v("1.5.0"), max: v("2.0.0")}
+
+      for {requirement, left, right} <- [
+            {"~> 1.0 and ~> 2.0 or ~> 3.0 and ~> 4.0", "~> 1.0", "~> 2.0"},
+            {"~> 3.0 and ~> 4.0 or ~> 1.0 and ~> 2.0", "~> 3.0", "~> 4.0"},
+            {"< 0.0.0-0 or ~> 1.0 and ~> 2.0", "~> 1.0", "~> 2.0"},
+            {"~> 1.0 and ~> 2.0 or < 0.0.0-0", "~> 1.0", "~> 2.0"}
+          ] do
+        message =
+          "requirement #{inspect(requirement)} is unsatisfiable because " <>
+            "#{inspect(left)} and #{inspect(right)} are disjoint"
+
+        assert_raise UnsatisfiableRequirementError, message, fn ->
+          Requirement.to_constraint!(requirement)
+        end
+
+        assert Requirement.to_constraint(requirement) == :error
+      end
+    end
+
     property "matches Version.match?/2" do
-      check all terms <- list_of(requirement_term(), min_length: 1, max_length: 4) do
-        requirement = Enum.join(terms, " and ")
-        assert {:ok, parsed} = Version.parse_requirement(requirement)
+      check all groups <-
+                  list_of(list_of(requirement_term(), min_length: 1, max_length: 4),
+                    min_length: 1,
+                    max_length: 3
+                  ) do
+        requirement = Enum.map_join(groups, " or ", &Enum.join(&1, " and "))
+        assert {:ok, _parsed} = Version.parse_requirement(requirement)
+
+        # Elixir 1.12 gives "and" and "or" the same precedence, so match each "and"
+        # group on its own
+        groups = Enum.map(groups, &Version.parse_requirement!(Enum.join(&1, " and ")))
+        match? = fn version -> Enum.any?(groups, &Version.match?(version, &1)) end
 
         case Requirement.to_constraint(requirement) do
           {:ok, constraint} ->
             mismatches =
               Enum.reject(@versions, fn version ->
-                Constraint.allows?(constraint, version) == Version.match?(version, parsed)
+                Constraint.allows?(constraint, version) == match?.(version)
               end)
 
             assert mismatches == [], "#{requirement} differs from core on #{inspect(mismatches)}"
 
           :error ->
-            refute Enum.any?(@versions, &Version.match?(&1, parsed)),
+            refute Enum.any?(@versions, match?),
                    "#{requirement} rejected but matches versions"
         end
       end
