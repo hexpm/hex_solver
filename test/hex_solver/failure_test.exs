@@ -56,8 +56,7 @@ defmodule HexSolver.FailureTest do
 
     assert run([{"foo", "~> 1.0"}, {"baz", "~> 1.0"}]) == """
            Because every version of "foo" depends on "bar ~> 2.0" which depends on "baz ~> 3.0", "foo" requires "baz ~> 3.0".
-           And because "your app" depends on "baz ~> 1.0", no version of "foo" is allowed.
-           So, because "your app" depends on "foo ~> 1.0", version solving failed.\
+           So, because "your app" depends on both "baz ~> 1.0" and "foo ~> 1.0", version solving failed.\
            """
   end
 
@@ -128,8 +127,7 @@ defmodule HexSolver.FailureTest do
 
     assert run([{"foo", "1.0.0"}, {"bar", "1.0.0"}]) == """
            Because every version of "bar" depends on "b/baz 1.0.0" and every version of "foo" depends on "a/baz 1.0.0", "bar" is incompatible with "foo".
-           And because "your app" depends on "bar 1.0.0", no version of "foo" is allowed.
-           So, because "your app" depends on "foo 1.0.0", version solving failed.\
+           So, because "your app" depends on both "bar 1.0.0" and "foo 1.0.0", version solving failed.\
            """
   end
 
@@ -142,8 +140,7 @@ defmodule HexSolver.FailureTest do
              {"top2", nil, dependencies: [{"foo", "~> 2.0"}]}
            ]) == """
            Because every version of "top1" depends on "foo ~> 1.0" and every version of "top2" depends on "foo ~> 2.0", "top1" is incompatible with "top2".
-           And because "your app" depends on "top1", no version of "top2" is allowed.
-           So, because "your app" depends on "top2", version solving failed.\
+           So, because "your app" depends on both "top1" and "top2", version solving failed.\
            """
   end
 

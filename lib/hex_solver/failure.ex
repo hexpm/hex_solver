@@ -223,12 +223,14 @@ defmodule HexSolver.Failure do
          state,
          %Incompatibility{cause: {:conflict, conflict, other}} = incompatibility
        ) do
-    complex = if match?({:conflict, _, _}, conflict), do: conflict, else: other
+    derived_conflict? = match?({:conflict, _, _}, conflict.cause)
+    derived_other? = match?({:conflict, _, _}, other.cause)
+    complex = if derived_conflict?, do: conflict, else: other
 
     cond do
       state.derivations[incompatibility] > 1 -> false
-      match?({:conflict, _, _}, conflict) and match?({:conflict, _, _}, other) -> false
-      not match?({:conflict, _, _}, conflict) and not match?({:conflict, _, _}, other) -> false
+      derived_conflict? and derived_other? -> false
+      not derived_conflict? and not derived_other? -> false
       true -> not Map.has_key?(state.line_numbers, complex)
     end
   end
