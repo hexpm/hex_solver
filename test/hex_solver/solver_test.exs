@@ -675,5 +675,55 @@ defmodule HexSolver.SolverTest do
                {"b", "baz"} => "1.0.0"
              }
     end
+
+    test "dependency on the same package from another repo" do
+      Registry.put("x", "d", "1.1.0", [{"a", "~> 1.0", repo: nil}])
+      Registry.put("a", "1.1.0", [{"d", "< 1.1.0", repo: nil}])
+
+      assert {:conflict, _, _} = run([{"d", ">= 1.1.0", repo: "x"}])
+    end
+
+    test "optional dependency on the same package as a locked package from another repo" do
+      Registry.put("b", "2.0.0", [{"c", "1.1.0 or 2.0.0", repo: "x"}])
+      Registry.put("x", "c", "1.1.0", [{"d", "< 1.1.0", repo: "x"}])
+      Registry.put("x", "d", "1.0.0", [{"a", "1.1.0 or 2.0.0", repo: nil}])
+      Registry.put("a", "1.1.0", [{"c", ">= 0.0.0", optional: true}])
+
+      assert {:conflict, _, _} = run([{"b", ">= 1.1.0"}], [{"c", "1.1.0", repo: "x"}])
+    end
+
+    test "optional dependencies on the same package from different repos" do
+      Registry.put("d", "2.0.0", [{"b", "~> 2.0"}, {"c", "1.1.0 or 2.0.0", optional: true}])
+      Registry.put("b", "2.0.0", [{"a", "~> 2.0"}, {"c", ">= 1.1.0", repo: "x", optional: true}])
+      Registry.put("a", "2.0.0", [{"c", ">= 1.1.0"}])
+
+      assert {:conflict, _, _} = run([{"d", ">= 0.0.0"}])
+    end
+
+    test "optional dependencies on the same package from different repos and a requirement from a third repo" do
+      Registry.put("d", "2.0.0", [{"b", "~> 2.0"}, {"c", "1.1.0 or 2.0.0", optional: true}])
+      Registry.put("b", "2.0.0", [{"a", "~> 2.0"}, {"c", ">= 1.1.0", repo: "x", optional: true}])
+      Registry.put("a", "2.1.0", [{"c", ">= 1.1.0"}])
+      Registry.put("a", "2.0.0", [{"c", ">= 1.1.0", repo: "y"}])
+
+      assert {:conflict, _, _} = run([{"d", ">= 0.0.0"}])
+    end
+
+    test "locked package and a dependency on the same package from another repo" do
+      Registry.put("x", "d", "0.9.0", [])
+      Registry.put("x", "d", "1.0.0", [{"c", "~> 2.0", repo: nil}])
+      Registry.put("x", "d", "1.1.0", [{"c", "~> 1.0", repo: "x"}])
+      Registry.put("x", "c", "1.0.0", [])
+
+      assert run([{"d", ">= 0.0.0", repo: "x"}], [{"c", "2.0.0"}]) == %{{"x", "d"} => "0.9.0"}
+    end
+
+    test "optional dependency on a missing version of a package required from the same repo" do
+      Registry.put("b", "1.1.0", [{"d", "1.0.0", repo: "x", optional: true}])
+      Registry.put("b", "2.0.0", [{"d", "1.0.0", repo: nil}])
+      Registry.put("x", "d", "1.1.0", [])
+
+      assert {:conflict, _, _} = run([{"b", ">= 1.1.0"}, {"d", "~> 1.0", repo: "x"}])
+    end
   end
 end

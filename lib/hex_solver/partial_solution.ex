@@ -18,10 +18,19 @@ defmodule HexSolver.PartialSolution do
         Term.relation(positive.term, term, opts)
 
       :error ->
-        case Map.fetch(solution.negative, name) do
-          {:ok, negative} -> Term.relation(negative.term, term, opts)
+        with {:ok, negatives} <- Map.fetch(solution.negative, name),
+             {:ok, negative} <- fetch_negative(negatives, term) do
+          Term.relation(negative.term, term, opts)
+        else
           :error -> :overlapping
         end
+    end
+  end
+
+  # The package being absent implies the negative term for every repo
+  defp fetch_negative(negatives, term) do
+    with :error <- Map.fetch(negatives, :any) do
+      Map.fetch(negatives, term.package_range.repo)
     end
   end
 
@@ -30,32 +39,21 @@ defmodule HexSolver.PartialSolution do
   end
 
   def satisfier(%PartialSolution{} = solution, term, opts \\ []) do
-    {:satisfier, assignment} =
-      Enum.reduce_while(Enum.reverse(solution.assignments), nil, fn assignment, assigned_term ->
-        if assignment.term.package_range.name == term.package_range.name do
-          if Term.compatible_package?(assignment.term, term) do
-            assigned_term =
-              if assigned_term do
-                Assignment.intersect(assigned_term, assignment)
-              else
-                assignment
-              end
+    name = term.package_range.name
 
-            if Term.satisfies?(assigned_term.term, term, opts) do
-              {:halt, {:satisfier, assignment}}
-            else
-              {:cont, assigned_term}
-            end
-          else
-            if assignment.term.positive do
-              false = term.positive
-              {:halt, {:satisfier, assignment}}
-            else
-              {:cont, assigned_term}
-            end
-          end
+    # Assignments are registered as in the solution, so that terms for the package
+    # from other repos are taken into account
+    {:satisfier, assignment} =
+      solution.assignments
+      |> Enum.reverse()
+      |> Enum.filter(&(&1.term.package_range.name == name))
+      |> Enum.reduce_while(%PartialSolution{}, fn assignment, partial ->
+        partial = register(partial, assignment)
+
+        if relation(partial, term, opts) == :subset do
+          {:halt, {:satisfier, assignment}}
         else
-          {:cont, assigned_term}
+          {:cont, partial}
         end
       end)
 
@@ -131,35 +129,56 @@ defmodule HexSolver.PartialSolution do
 
   defp register(solution, assignment) do
     name = assignment.term.package_range.name
+    repo = assignment.term.package_range.repo
 
     case Map.fetch(solution.positive, name) do
       {:ok, old_assignment} ->
-        assignment = Assignment.intersect(old_assignment, assignment)
+        case Assignment.intersect(old_assignment, assignment) do
+          # Optional terms for different repos only allow the package to be absent
+          %Assignment{term: nil} when old_assignment.term.optional and assignment.term.optional ->
+            term = Term.absent_term(old_assignment.term)
+            negatives = %{term.package_range.repo => %{old_assignment | term: term}}
+            positive = Map.delete(solution.positive, name)
+            negative = Map.put(solution.negative, name, negatives)
+            %{solution | positive: positive, negative: negative}
 
-        # An optional term becomes negative when the package can only be absent
-        if assignment.term.positive do
-          positive = Map.put(solution.positive, name, assignment)
-          %{solution | positive: positive}
-        else
-          positive = Map.delete(solution.positive, name)
-          negative = Map.put(solution.negative, name, assignment)
-          %{solution | positive: positive, negative: negative}
+          # An optional term becomes negative when the package can only be absent
+          %Assignment{term: %Term{positive: false}} = assignment ->
+            positive = Map.delete(solution.positive, name)
+            negatives = %{assignment.term.package_range.repo => assignment}
+            negative = Map.put(solution.negative, name, negatives)
+            %{solution | positive: positive, negative: negative}
+
+          %Assignment{term: %Term{positive: true}} = assignment ->
+            positive = Map.put(solution.positive, name, assignment)
+            %{solution | positive: positive}
         end
 
       :error ->
+        # Negative terms are kept per repo, since terms for the same package from
+        # different repos can only be intersected when one of them is positive
+        {old_assignment, negatives} =
+          solution.negative
+          |> Map.get(name, %{})
+          |> Map.pop(repo)
+
         assignment =
-          if old_assignment = Map.get(solution.negative, name) do
+          if old_assignment do
             Assignment.intersect(old_assignment, assignment)
           else
             assignment
           end
 
         if assignment.term.positive do
+          assignment =
+            Enum.reduce(Map.values(negatives), assignment, &Assignment.intersect(&2, &1))
+
           negative = Map.delete(solution.negative, name)
           positive = Map.put(solution.positive, name, assignment)
           %{solution | negative: negative, positive: positive}
         else
-          negative = Map.put(solution.negative, name, assignment)
+          negatives = Map.put(negatives, assignment.term.package_range.repo, assignment)
+          negative = Map.put(solution.negative, name, negatives)
           %{solution | negative: negative}
         end
     end
