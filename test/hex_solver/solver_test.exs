@@ -149,6 +149,14 @@ defmodule HexSolver.SolverTest do
       assert run([{"foo", "1.0.0"}]) == %{"foo" => "1.0.0", "bar" => "1.0.0"}
     end
 
+    test "dependency on itself" do
+      Registry.put("foo", "0.0.1", [])
+      Registry.put("foo", "0.1.0", [{"foo", "~> 0.1"}])
+      Registry.put("foo", "0.2.0", [])
+
+      assert run([{"foo", "~> 0.1.0"}]) == %{"foo" => "0.1.0"}
+    end
+
     test "sub dependencies" do
       Registry.put("foo", "1.0.0", [])
       Registry.put("foo", "2.0.0", [])
