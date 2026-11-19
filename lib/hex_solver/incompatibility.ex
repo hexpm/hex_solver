@@ -406,9 +406,9 @@ defmodule HexSolver.Incompatibility do
 
   defp terse_name(term, opts) do
     if Constraint.any?(term.package_range.constraint) do
-      package_name(term, opts)
+      [package_name(term, opts), optional(term)]
     else
-      bright(PackageRange.to_string(term.package_range), opts)
+      [bright(PackageRange.to_string(term.package_range), opts), optional(term)]
     end
   end
 
@@ -428,7 +428,11 @@ defmodule HexSolver.Incompatibility do
 
   defp term_abs(%Term{} = term), do: %Term{term | positive: true}
 
-  defp bright_term_abs(term, opts), do: bright(Term.to_string(term_abs(term)), opts)
+  defp bright_term_abs(term, opts),
+    do: [bright(Term.to_string(term_abs(term)), opts), optional(term)]
+
+  defp optional(%Term{optional: true}), do: " (optional)"
+  defp optional(%Term{optional: false}), do: ""
 
   defimpl String.Chars do
     defdelegate to_string(incompatibility), to: HexSolver.Incompatibility

@@ -114,8 +114,30 @@ defmodule HexSolver.FailureTest do
     Registry.put("foo", "2.0.0", [])
 
     assert run([{"foo", "~> 2.0"}], [{"foo", "1.0.0"}]) == """
-           Because "the lock" specifies "foo 1.0.0", "foo 1.0.0" is required.
+           Because "the lock" specifies "foo 1.0.0" (optional), "foo 1.0.0" (optional) is required.
            So, because "your app" depends on "foo ~> 2.0", version solving failed.\
+           """
+  end
+
+  test "optional dependency" do
+    Registry.put("foo", "1.0.0", [{"bar", "~> 1.0", optional: true}])
+    Registry.put("bar", "1.0.0", [])
+    Registry.put("bar", "2.0.0", [])
+
+    assert run([{"foo", "1.0.0"}, {"bar", "2.0.0"}]) == """
+           Because every version of "foo" depends on "bar ~> 1.0" (optional) and "your app" depends on "bar 2.0.0", no version of "foo" is allowed.
+           So, because "your app" depends on "foo 1.0.0", version solving failed.\
+           """
+  end
+
+  test "optional dependency of a dependency" do
+    Registry.put("b", "1.1.0", [{"c", "1.1.0 or 2.0.0"}])
+    Registry.put("c", "1.1.0", [{"d", "~> 1.0.0", optional: true}])
+    Registry.put("d", "2.0.0", [])
+
+    assert run([{"b", "~> 1.0"}, {"d", "1.1.0 or 2.0.0"}]) == """
+           Because every version of "b" depends on "c 1.1.0 or 2.0.0" which depends on "d ~> 1.0.0" (optional), "b" requires "d ~> 1.0.0" (optional).
+           So, because "your app" depends on both "b ~> 1.0" and "d 1.1.0 or 2.0.0", version solving failed.\
            """
   end
 
