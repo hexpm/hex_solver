@@ -128,6 +128,7 @@ defmodule HexSolver.Solver do
             )
 
           state = %{state | lister: lister}
+          selected = %PackageRange{package_range | constraint: version}
 
           {state, conflict} =
             Enum.reduce(incompatibilities, {state, false}, fn incompatibility,
@@ -137,7 +138,7 @@ defmodule HexSolver.Solver do
               # that will eventually choose a better version.
               conflict =
                 conflict or
-                  incompatibility_conflict?(state, incompatibility, package_range.name)
+                  incompatibility_conflict?(state, incompatibility, selected)
 
               state = add_incompatibility(state, incompatibility)
               {state, conflict}
@@ -147,9 +148,8 @@ defmodule HexSolver.Solver do
             if conflict do
               state.solution
             else
-              package_range = %PackageRange{package_range | constraint: version}
-              Logger.debug("RESOLVER: selecting #{PackageRange.to_string(package_range)}")
-              PartialSolution.decide(state.solution, package_range)
+              Logger.debug("RESOLVER: selecting #{PackageRange.to_string(selected)}")
+              PartialSolution.decide(state.solution, selected)
             end
 
           state = %{state | solution: solution}
@@ -182,9 +182,13 @@ defmodule HexSolver.Solver do
     %{state | incompatibilities: incompatibilities}
   end
 
-  defp incompatibility_conflict?(state, incompatibility, name) do
+  defp incompatibility_conflict?(state, incompatibility, selected) do
+    selected_term = %Term{positive: true, package_range: selected}
+
     Enum.all?(incompatibility.terms, fn term ->
-      term.package_range.name == name or PartialSolution.satisfies?(state.solution, term)
+      if term.package_range.name == selected.name,
+        do: Term.satisfies?(selected_term, term),
+        else: PartialSolution.satisfies?(state.solution, term)
     end)
   end
 
