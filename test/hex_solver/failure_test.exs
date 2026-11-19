@@ -109,6 +109,43 @@ defmodule HexSolver.FailureTest do
            """
   end
 
+  test "conjunction lines end with a period" do
+    Registry.put("b", "1.0.0", [{"c", ">= 1.1.0"}])
+    Registry.put("b", "1.0.0-rc.1", [{"d", "~> 1.0.0-rc.1"}])
+    Registry.put("c", "1.1.0", [{"d", "1.1.0 or 2.0.0"}])
+    Registry.put("c", "2.0.0", [{"d", ">= 0.0.0"}])
+    Registry.put("d", "0.9.0", [{"c", "~> 1.0.0"}])
+    Registry.put("d", "1.0.0-rc.1", [{"c", "1.0.0"}])
+
+    assert run([{"b", "~> 1.0.0-rc.1"}]) == """
+           (1) Because "d >= 1.0.0-rc.1" depends on "c 1.0.0" and "d < 1.0.0-rc.1" depends on "c ~> 1.0.0", "d" requires "c ~> 1.0.0".
+               And because "c < 2.0.0" depends on "d 1.1.0 or 2.0.0", "d < 1.1.0 or > 1.1.0 and < 2.0.0 or > 2.0.0" is forbidden.
+               And because "b < 1.0.0" depends on "d ~> 1.0.0-rc.1" and "b >= 1.0.0" depends on "c >= 1.1.0", "b" requires "c >= 1.1.0".
+               Because "c < 2.0.0" depends on "d 1.1.0 or 2.0.0" and "c >= 2.0.0" depends on "d >= 0.0.0", "c" requires "d >= 0.0.0".
+               And because "d" requires "c ~> 1.0.0" (1), "c < 1.0.0 or >= 1.1.0-0" is forbidden.
+               Thus, no version of "b" is allowed.
+               So, because "your app" depends on "b ~> 1.0.0-rc.1", version solving failed.\
+           """
+  end
+
+  test "lines referencing a derived line end with a period" do
+    Registry.put("b", "0.9.0", [])
+    Registry.put("b", "1.1.0", [{"d", "> 1.0.0 and < 2.0.0"}])
+    Registry.put("c", "1.0.0", [{"d", "1.0.0"}])
+    Registry.put("c", "1.0.0-rc.1", [{"b", ">= 1.1.0"}])
+    Registry.put("d", "1.0.0", [{"b", "~> 1.0"}])
+
+    assert run([{"c", "< 1.1.0"}]) == """
+           (1) Because no versions of "b" match ">= 1.0.0 and < 1.1.0" and "b >= 1.1.0" depends on "d > 1.0.0 and < 2.0.0", "b >= 1.0.0" requires "d > 1.0.0 and < 2.0.0".
+               And because "c < 1.0.0" depends on "b >= 1.1.0", "c < 1.0.0" requires "d > 1.0.0 and < 2.0.0".
+           (2) So, because no versions of "d" match "> 1.0.0 and < 2.0.0" and "c >= 1.0.0" depends on "d 1.0.0", "c" requires "d 1.0.0".
+
+               Because "b >= 1.0.0" requires "d > 1.0.0 and < 2.0.0" which depends on "b ~> 1.0" (1), "d <= 1.0.0 or >= 2.0.0" is forbidden.
+               And because "c" requires "d 1.0.0" (2), no version of "c" is allowed.
+               So, because "your app" depends on "c < 1.1.0", version solving failed.\
+           """
+  end
+
   test "locked" do
     Registry.put("foo", "1.0.0", [])
     Registry.put("foo", "2.0.0", [])

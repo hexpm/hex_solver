@@ -81,7 +81,8 @@ defmodule HexSolver.Failure do
                 ansi: state.ansi
               ),
               ", ",
-              incompatibility_string
+              incompatibility_string,
+              "."
             ])
 
           conflict_line || other_line ->
@@ -99,7 +100,8 @@ defmodule HexSolver.Failure do
               " because ",
               Incompatibility.to_string(with_line, ansi: state.ansi),
               " (#{line}), ",
-              incompatibility_string
+              incompatibility_string,
+              "."
             ])
 
           single_line_conflict? or single_line_other? ->
@@ -109,7 +111,7 @@ defmodule HexSolver.Failure do
             state
             |> visit(first)
             |> visit(second)
-            |> write(incompatibility, numbered?, ["This, ", incompatibility_string])
+            |> write(incompatibility, numbered?, ["Thus, ", incompatibility_string, "."])
 
           true ->
             state
@@ -142,7 +144,8 @@ defmodule HexSolver.Failure do
                 ansi: state.ansi
               ),
               ", ",
-              incompatibility_string
+              incompatibility_string,
+              "."
             ])
 
           collapsible?(state, derived) ->
