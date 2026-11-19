@@ -210,8 +210,8 @@ defmodule HexSolver.PackageLister do
     dependency = run.dependency
 
     case dependencies do
-      %{^dependency => %{repo: repo, constraint: constraint, optional: optional}} ->
-        {lister, {repo, constraint, optional} == run.constraint}
+      %{^dependency => %{repo: repo, constraint: constraint, optional: optional, label: label}} ->
+        {lister, label not in lister.overrides and {repo, constraint, optional} == run.constraint}
 
       %{} ->
         {lister, false}

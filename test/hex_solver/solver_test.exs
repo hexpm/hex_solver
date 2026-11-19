@@ -629,6 +629,16 @@ defmodule HexSolver.SolverTest do
              }
     end
 
+    test "overridden dependency in an adjacent release" do
+      Registry.put("foo", "1.0.0", [{"bar", "1.0.0", label: "new_bar"}])
+      Registry.put("foo", "2.0.0", [{"bar", "1.0.0"}])
+      Registry.put("bar", "1.0.0", [])
+      Registry.put("bar", "2.0.0", [])
+
+      assert run([{"foo", ">= 0.0.0"}, {"bar", "2.0.0", label: "new_bar"}], [], ["new_bar"]) ==
+               %{"foo" => "1.0.0", "bar" => "2.0.0"}
+    end
+
     test "overridden dependencies does not unlock" do
       Registry.put("foo", "1.0.0", [])
       Registry.put("foo", "1.1.0", [])
