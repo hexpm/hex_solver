@@ -131,6 +131,20 @@ defmodule HexSolver.FailureTest do
            """
   end
 
+  test "same dependency on both sides of a collapsed derivation" do
+    Registry.put("b", "1.2.0", [{"f", "1.0.0"}])
+    Registry.put("d", "1.1.0", [{"f", "~> 1.1", optional: true}])
+    Registry.put("d", "1.2.0", [{"f", "~> 1.0", repo: "x", optional: true}])
+    Registry.put("f", "1.0.0", [])
+
+    assert run([{"b", ">= 1.0.0"}, {"d", "~> 1.0"}]) == """
+           Because "d >= 1.2.0" depends on "x/f ~> 1.0" and "d < 1.2.0" depends on "f ~> 1.1", "d" requires "f ~> 1.1" or "x/f ~> 1.0".
+           And because every version of "b" depends on "f 1.0.0", if "b" and "d" then "x/f ~> 1.0".
+           And because every version of "b" depends on "f 1.0.0", "b" is incompatible with "d".
+           So, because "your app" depends on both "b >= 1.0.0" and "d ~> 1.0", version solving failed.\
+           """
+  end
+
   test "sub dependencies" do
     Registry.put("foo", "1.0.0", [])
     Registry.put("foo", "2.0.0", [])
