@@ -25,12 +25,12 @@ defmodule HexSolver.Failure do
       |> Enum.map(fn {number, _message} -> number end)
       |> Enum.filter(&is_integer/1)
 
-    indent? = numbers != []
-    indent = if indent?, do: Enum.max_by(numbers, &byte_size(Integer.to_string(&1))) + 3
+    # Align messages with the widest line number
+    indent = if numbers != [], do: byte_size("(#{Enum.max(numbers)}) ")
 
     Enum.map_join(Enum.reverse(state.lines), "\n", fn {number, message} ->
       if number do
-        "(#{number}) #{message}"
+        "#{String.pad_trailing("(#{number}) ", indent)}#{message}"
       else
         "#{message && indent && String.duplicate(" ", indent)}#{message}"
       end
