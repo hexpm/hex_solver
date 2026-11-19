@@ -137,8 +137,17 @@ defmodule HexSolver.PackageLister do
           optional: optional
         }
 
-        {Incompatibility.new([package_term, dependency_term], :dependency), lister}
+        # A dependency on the package itself that every version in the range
+        # satisfies can never be violated
+        if dependency == package and dependency_repo == package_repo and
+             Constraint.allows_all?(constraint, range) do
+          {nil, lister}
+        else
+          {Incompatibility.new([package_term, dependency_term], :dependency), lister}
+        end
       end)
+
+    incompatibilities = Enum.reject(incompatibilities, &is_nil/1)
 
     prefetch =
       dependencies
