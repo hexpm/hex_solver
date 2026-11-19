@@ -145,7 +145,7 @@ defmodule HexSolver.Failure do
               incompatibility_string
             ])
 
-          collapsible?(state, derived) ->
+          collapsible?(state, derived, ext) ->
             {:conflict, derived_conflict, derived_other} = derived.cause
 
             collapsed_derived =
@@ -221,16 +221,19 @@ defmodule HexSolver.Failure do
 
   defp collapsible?(
          state,
-         %Incompatibility{cause: {:conflict, conflict, other}} = incompatibility
+         %Incompatibility{cause: {:conflict, conflict, other}} = incompatibility,
+         ext
        ) do
     derived_conflict? = match?({:conflict, _, _}, conflict.cause)
     derived_other? = match?({:conflict, _, _}, other.cause)
     complex = if derived_conflict?, do: conflict, else: other
+    simple = if derived_conflict?, do: other, else: conflict
 
     cond do
       state.derivations[incompatibility] > 1 -> false
       derived_conflict? and derived_other? -> false
       not derived_conflict? and not derived_other? -> false
+      simple == ext -> false
       true -> not Map.has_key?(state.line_numbers, complex)
     end
   end
